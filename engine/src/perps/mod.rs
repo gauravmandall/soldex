@@ -38,7 +38,7 @@ pub struct PerpsMarket {
 impl PerpsMarket {
     pub fn sol_perp() -> Self {
         Self {
-            id: "SOL-PERP".into(),
+            id: "SOL-USDC".into(),
             base: "SOL".into(),
             quote: "USDC".into(),
             tick_size: 0.01,
@@ -55,7 +55,7 @@ impl PerpsMarket {
 
     pub fn btc_perp() -> Self {
         Self {
-            id: "BTC-PERP".into(),
+            id: "BTC-USDC".into(),
             base: "BTC".into(),
             quote: "USDC".into(),
             tick_size: 1.0,
@@ -72,7 +72,7 @@ impl PerpsMarket {
 
     pub fn eth_perp() -> Self {
         Self {
-            id: "ETH-PERP".into(),
+            id: "ETH-USDC".into(),
             base: "ETH".into(),
             quote: "USDC".into(),
             tick_size: 0.1,
@@ -184,9 +184,9 @@ impl PerpsEngine {
         ));
 
         let mut markets = HashMap::new();
-        markets.insert("SOL-PERP".into(), PerpsMarket::sol_perp());
-        markets.insert("BTC-PERP".into(), PerpsMarket::btc_perp());
-        markets.insert("ETH-PERP".into(), PerpsMarket::eth_perp());
+        markets.insert("SOL-USDC".into(), PerpsMarket::sol_perp());
+        markets.insert("BTC-USDC".into(), PerpsMarket::btc_perp());
+        markets.insert("ETH-USDC".into(), PerpsMarket::eth_perp());
 
         Ok(Self {
             config,

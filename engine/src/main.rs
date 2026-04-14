@@ -1,7 +1,7 @@
 use anyhow::Result;
 use axum::{
     extract::{
-        ws::{Message, WebSocket, WebSocketUpgrade},
+        ws::{WebSocket, WebSocketUpgrade},
         State,
     },
     response::IntoResponse,
@@ -22,13 +22,14 @@ mod polymarket;
 mod risk;
 mod wallet;
 mod ws;
+mod hyperliquid;
 
 use config::EngineConfig;
 use orderbook::OrderbookEngine;
 use perps::PerpsEngine;
 use polymarket::PolymarketBridge;
 use risk::RiskEngine;
-use crate::ws::{ClientMessage, ServerMessage};
+use crate::ws::ServerMessage;
 
 /// Shared engine state across all WebSocket connections
 #[derive(Clone)]
@@ -38,7 +39,6 @@ pub struct AppState {
     pub perps: Arc<PerpsEngine>,
     pub polymarket: Arc<PolymarketBridge>,
     pub risk: Arc<RiskEngine>,
-    /// Broadcast channel — engine pushes updates to ALL connected clients
     pub broadcast_tx: broadcast::Sender<ServerMessage>,
 }
 
@@ -57,15 +57,11 @@ async fn main() -> Result<()> {
     let config = Arc::new(EngineConfig::from_env()?);
 
     info!("🚀 Soldex Engine starting on {}", config.listen_addr);
-    info!("🔗 Solana RPC: {}", config.solana_rpc_url);
-    info!("📊 Polymarket API: {}", config.polymarket_api_url);
 
-    // Broadcast channel for pushing market data to frontend clients
     let (broadcast_tx, _) = broadcast::channel::<ServerMessage>(1024);
 
-    // Initialize sub-engines
     let orderbook = Arc::new(OrderbookEngine::new(config.clone()));
-    let perps: Arc<PerpsEngine> = Arc::new(PerpsEngine::new(config.clone()).await?);
+    let perps = Arc::new(PerpsEngine::new(config.clone()).await?);
     let polymarket = Arc::new(PolymarketBridge::new(config.clone()));
     let risk = Arc::new(RiskEngine::new());
 
@@ -78,7 +74,22 @@ async fn main() -> Result<()> {
         broadcast_tx: broadcast_tx.clone(),
     };
 
-    // Spawn background tasks
+    // Spawn Hyperliquid feed
+    let tx_clone = broadcast_tx.clone();
+    tokio::spawn(async move {
+        if let Err(e) = hyperliquid::start_hyperliquid_feed(tx_clone).await {
+            error!("Hyperliquid WebSocket feed error: {e}");
+        }
+    });
+
+    let tx_clone = broadcast_tx.clone();
+    tokio::spawn(async move {
+        if let Err(e) = hyperliquid::start_hyperliquid_stats_poller(tx_clone).await {
+            error!("Hyperliquid stats poller error: {e}");
+        }
+    });
+
+    // Spawn Polymarket feed
     let pm_bridge = polymarket.clone();
     let tx_clone = broadcast_tx.clone();
     tokio::spawn(async move {
@@ -87,14 +98,6 @@ async fn main() -> Result<()> {
         }
     });
 
-    let tx_clone = broadcast_tx.clone();
-    tokio::spawn(async move {
-        if let Err(e) = feeds::start_pyth_feed(tx_clone).await {
-            error!("Pyth market data error: {e}");
-        }
-    });
-
-    // Build Axum router
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods(Any)

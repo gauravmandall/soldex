@@ -13,13 +13,13 @@ import { PositionsPanel } from './PositionsPanel'
 import { PolymarketPanel } from '../polymarket/PolymarketPanel'
 import { PrivacyBanner } from '../privacy/PrivacyBanner'
 
-export type MarketId = 'SOL-PERP' | 'BTC-PERP' | 'ETH-PERP' | string
+export type MarketId = 'SOL-USDC' | 'BTC-USDC' | 'ETH-USDC' | string
 export type RightPanel = 'orderbook' | 'trades' | 'polymarket'
 export type BottomPanel = 'positions' | 'orders' | 'history'
 
 interface Props { defaultMarket?: string }
 
-export function TradingTerminal({ defaultMarket = 'SOL-PERP' }: Props) {
+export function TradingTerminal({ defaultMarket = 'SOL-USDC' }: Props) {
   const { ticker, setActiveMarket, activeMarket } = useMarketStore()
   const { connected } = useEngineWS()
   const [rightPanel, setRightPanel] = useState<RightPanel>('orderbook')
@@ -71,7 +71,7 @@ export function TradingTerminal({ defaultMarket = 'SOL-PERP' }: Props) {
             <span className="text-sm font-semibold text-white">{activeMarket}</span>
             <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/10 text-blue-400 rounded">Perp</span>
           </div>
-          <span className="text-[10px] text-[#4b5068]">Solana / Pyth Network</span>
+          <span className="text-[10px] text-[#4b5068]">Hyperliquid / Decentralized Feed</span>
         </div>
 
         <div className="h-6 w-px bg-[#14151f]" />

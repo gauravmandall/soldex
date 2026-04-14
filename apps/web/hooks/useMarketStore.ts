@@ -102,7 +102,7 @@ interface MarketStore {
 
 export const useMarketStore = create<MarketStore>()(
   immer((set) => ({
-    activeMarket: 'SOL-PERP',
+    activeMarket: 'SOL-USDC',
     orderbook: null,
     ticker: null,
     tickers: {},

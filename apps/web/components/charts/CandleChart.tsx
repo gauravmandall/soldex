@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react'
-import { usePythCandles } from '@/hooks/usePythCandles'
+import { useHyperliquidCandles } from '@/hooks/useHyperliquidCandles'
 
 interface Props { marketId: string; interval: string }
 
@@ -7,7 +7,7 @@ export function CandleChart({ marketId, interval }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<any>(null)
   const seriesRef = useRef<any>(null)
-  const { data, loading } = usePythCandles(marketId, interval)
+  const { data, loading } = useHyperliquidCandles(marketId, interval)
 
   useEffect(() => {
     if (!containerRef.current) return

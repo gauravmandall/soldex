@@ -11,8 +11,8 @@ export default async function PerpsMarketPage({
 
 export function generateStaticParams() {
   return [
-    { market: 'SOL-PERP' },
-    { market: 'BTC-PERP' },
-    { market: 'ETH-PERP' },
+    { market: 'SOL-USDC' },
+    { market: 'BTC-USDC' },
+    { market: 'ETH-USDC' },
   ]
 }

@@ -3,7 +3,7 @@ import React, { useState } from 'react'
 import { useMarketStore } from '@/hooks/useMarketStore'
 import { ChevronDown } from 'lucide-react'
 
-const MARKETS = ['SOL-PERP', 'BTC-PERP', 'ETH-PERP']
+const MARKETS = ['SOL-USDC', 'BTC-USDC', 'ETH-USDC']
 
 export function MarketSelector() {
   const { activeMarket, setActiveMarket } = useMarketStore()
