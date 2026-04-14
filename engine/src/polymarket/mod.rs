@@ -41,11 +41,19 @@ pub struct PolymarketMarket {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PolymarketOrderbook {
-    pub market: String, // token_id
-    pub bids: Vec<[f64; 2]>, // [price, size]
-    pub asks: Vec<[f64; 2]>,
-    pub hash: String,
-    pub timestamp: String,
+    pub market: Option<String>, 
+    pub asset_id: Option<String>,
+    pub bids: Option<Vec<PolyPriceLevel>>,
+    pub asks: Option<Vec<PolyPriceLevel>>,
+    pub hash: Option<String>,
+    pub timestamp: Option<String>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PolyPriceLevel {
+    pub price: String,
+    pub size: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -148,7 +156,13 @@ impl PolymarketBridge {
             .await
             .context("GET /book")?;
 
-        Ok(resp.json().await?)
+        let body = resp.text().await.context("read response text")?;
+        
+        // Try parsing into our struct which handles the 'error' field too
+        let book: PolymarketOrderbook = serde_json::from_str(&body)
+            .with_context(|| format!("Failed to decode orderbook JSON: {}", body))?;
+            
+        Ok(book)
     }
 
     /// Convert raw markets to Soldex opportunities with orderbook data
@@ -170,10 +184,18 @@ impl PolymarketBridge {
             let (best_bid, best_ask, spread) =
                 if let Some(yes) = yes_token {
                     match self.fetch_orderbook(&yes.token_id).await {
-                        Ok(book) => {
-                            let bid = book.bids.first().map(|b| b[0]).unwrap_or(yes_price);
-                            let ask = book.asks.first().map(|a| a[0]).unwrap_or(yes_price);
+                        Ok(book) if book.error.is_none() && book.bids.is_some() && book.asks.is_some() => {
+                            let bids = book.bids.unwrap();
+                            let asks = book.asks.unwrap();
+                            let bid = bids.first().and_then(|b| b.price.parse::<f64>().ok()).unwrap_or(yes_price);
+                            let ask = asks.first().and_then(|a| a.price.parse::<f64>().ok()).unwrap_or(yes_price);
                             (bid, ask, ask - bid)
+                        }
+                        Ok(book) => {
+                            if let Some(err) = book.error {
+                                debug!("No orderbook for {}: {}", market.condition_id, err);
+                            }
+                            (yes_price - 0.01, yes_price + 0.01, 0.02)
                         }
                         Err(e) => {
                             warn!("Orderbook fetch failed for {}: {e}", market.condition_id);

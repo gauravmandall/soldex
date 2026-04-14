@@ -5,6 +5,8 @@ const config: Config = {
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './app/**/*.{js,ts,jsx,tsx,mdx}',
+    './providers/**/*.{js,ts,jsx,tsx,mdx}',
+    './hooks/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   darkMode: 'class',
   theme: {
@@ -27,6 +29,25 @@ const config: Config = {
           purple: '#a855f7',
           yellow: '#eab308',
         },
+        // Merged from legacy tailwind.config.js
+        bg: {
+          base: "#080b0f",
+          panel: "#0d1117",
+          elevated: "#141c24",
+          border: "#1e2d3d",
+        },
+        accent: {
+          green: "#00d4a0",
+          red: "#ff4a6b",
+          blue: "#3b82f6",
+          amber: "#f59e0b",
+          purple: "#8b5cf6",
+        },
+        text: {
+          primary: "#e6edf3",
+          secondary: "#7d8590",
+          muted: "#484f58",
+        },
       },
       fontFamily: {
         mono: ['var(--font-mono)', 'JetBrains Mono', 'Fira Code', 'monospace'],
@@ -36,6 +57,7 @@ const config: Config = {
         'flash-green': 'flash-green 0.3s ease',
         'flash-red':   'flash-red 0.3s ease',
         'fade-in':     'fade-in 0.2s ease-out',
+        pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
       keyframes: {
         'flash-green': {
@@ -50,10 +72,10 @@ const config: Config = {
           from: { opacity: '0', transform: 'translateY(4px)' },
           to:   { opacity: '1', transform: 'translateY(0)' },
         },
-      },
-      lineClamp: {
-        2: '2',
-        3: '3',
+        pulse: {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.4" },
+        },
       },
     },
   },

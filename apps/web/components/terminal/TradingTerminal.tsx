@@ -13,8 +13,9 @@ import { PositionsPanel } from './PositionsPanel'
 import { PolymarketPanel } from '../polymarket/PolymarketPanel'
 import { PrivacyBanner } from '../privacy/PrivacyBanner'
 
-type RightPanel = 'orderbook' | 'trades' | 'polymarket'
-type BottomPanel = 'positions' | 'orders' | 'history'
+export type MarketId = 'SOL-PERP' | 'BTC-PERP' | 'ETH-PERP' | string
+export type RightPanel = 'orderbook' | 'trades' | 'polymarket'
+export type BottomPanel = 'positions' | 'orders' | 'history'
 
 interface Props { defaultMarket?: string }
 
@@ -77,11 +78,11 @@ export function TradingTerminal({ defaultMarket = 'SOL-PERP' }: Props) {
 
         <div className="flex items-center gap-10">
           <Stat label="Index Price" value={`$${ticker?.price?.toLocaleString() || '---'}`} vClass="text-blue-400 font-medium" />
-          <Stat label="24h Change" value={`${ticker?.change_pct_24h > 0 ? '+' : ''}${ticker?.change_pct_24h.toFixed(2)}%`} 
-            vClass={ticker?.change_pct_24h > 0 ? 'text-green-400' : 'text-red-400'} />
+          <Stat label="24h Change" value={ticker ? `${ticker.change_pct_24h > 0 ? '+' : ''}${ticker.change_pct_24h.toFixed(2)}%` : '---'} 
+            vClass={ticker ? (ticker.change_pct_24h > 0 ? 'text-green-400' : 'text-red-400') : 'text-[#4b5068]'} />
           <Stat label="24h High" value={`$${ticker?.high_24h?.toLocaleString() || '---'}`} />
           <Stat label="24h Low" value={`$${ticker?.low_24h?.toLocaleString() || '---'}`} />
-          <Stat label="Funding Rate" value={`${(ticker?.funding_rate * 100).toFixed(4)}%`} vClass="text-yellow-500/80" />
+          <Stat label="Funding Rate" value={ticker ? `${(ticker.funding_rate * 100).toFixed(4)}%` : '---'} vClass="text-yellow-500/80" />
         </div>
       </div>
 

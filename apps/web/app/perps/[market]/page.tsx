@@ -1,7 +1,12 @@
 import { TradingTerminal } from '@/components/terminal/TradingTerminal'
 
-export default function PerpsMarketPage({ params }: { params: { market: string } }) {
-  return <TradingTerminal defaultMarket={params.market} />
+export default async function PerpsMarketPage({ 
+  params 
+}: { 
+  params: Promise<{ market: string }> 
+}) {
+  const { market } = await params
+  return <TradingTerminal defaultMarket={market} />
 }
 
 export function generateStaticParams() {
