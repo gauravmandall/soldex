@@ -17,6 +17,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 mod config;
 mod orderbook;
 mod feeds;
+mod perps;
 mod polymarket;
 mod risk;
 mod wallet;
@@ -27,7 +28,7 @@ use orderbook::OrderbookEngine;
 use perps::PerpsEngine;
 use polymarket::PolymarketBridge;
 use risk::RiskEngine;
-use ws::{ClientMessage, ServerMessage};
+use crate::ws::{ClientMessage, ServerMessage};
 
 /// Shared engine state across all WebSocket connections
 #[derive(Clone)]
@@ -64,7 +65,7 @@ async fn main() -> Result<()> {
 
     // Initialize sub-engines
     let orderbook = Arc::new(OrderbookEngine::new(config.clone()));
-    let perps = Arc::new(PerpsEngine::new(config.clone()).await?);
+    let perps: Arc<PerpsEngine> = Arc::new(PerpsEngine::new(config.clone()).await?);
     let polymarket = Arc::new(PolymarketBridge::new(config.clone()));
     let risk = Arc::new(RiskEngine::new());
 
@@ -105,10 +106,12 @@ async fn main() -> Result<()> {
         .layer(cors)
         .with_state(state);
 
-    let listener = tokio::net::TcpListener::bind(&config.listen_addr).await?;
-    info!("✅ Engine listening on {}", config.listen_addr);
+    let addr = config.listen_addr.parse().expect("Invalid listen address");
+    info!("✅ Engine listening on {}", addr);
 
-    axum::serve(listener, app).await?;
+    axum::Server::bind(&addr)
+        .serve(app.into_make_service())
+        .await?;
     Ok(())
 }
 

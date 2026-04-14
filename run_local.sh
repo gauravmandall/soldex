@@ -25,9 +25,9 @@ if [ ! -f .env ]; then
 fi
 
 # 2. Ports check
-log "Cleaning up existing processes on ports 9000 (Engine) and 3000 (Web)..."
+log "Cleaning up existing processes on ports 9000 (Engine) and 3001 (Web)..."
 lsof -ti:9000 | xargs kill -9 2>/dev/null || true
-lsof -ti:3000 | xargs kill -9 2>/dev/null || true
+lsof -ti:3001 | xargs kill -9 2>/dev/null || true
 
 # 3. Build & Start Engine
 log "Building Soldex Trading Engine (Rust)..."
@@ -61,7 +61,7 @@ else
     WEB_PID=$!
 fi
 
-success "Dashboard starting at http://localhost:3000"
+success "Dashboard starting at http://localhost:3001"
 log "🚀 System ready. Press Ctrl+C to stop all services."
 echo "--------------------------------------------------"
 

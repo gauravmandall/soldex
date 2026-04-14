@@ -26,15 +26,15 @@ pub struct PolymarketMarket {
     pub condition_id: String,
     pub question_id: String,
     pub question: String,
-    pub description: String,
-    pub end_date_iso: String,
+    pub description: Option<String>,
+    pub end_date_iso: Option<String>,
     pub game_start_time: Option<String>,
     pub tokens: Vec<PolymarketToken>,
     pub active: bool,
     pub closed: bool,
-    pub volume: f64,
-    pub volume_num_24hr: f64,
-    pub liquidity: f64,
+    pub volume: Option<f64>,
+    pub volume_num_24hr: Option<f64>,
+    pub liquidity: Option<f64>,
     pub category: Option<String>,
     pub tags: Option<Vec<String>>,
 }
@@ -128,8 +128,13 @@ impl PolymarketBridge {
             anyhow::bail!("Polymarket API error {}: {}", status, body);
         }
 
-        let markets: Vec<PolymarketMarket> = resp.json().await?;
-        Ok(markets)
+        #[derive(Deserialize)]
+        struct Wrapper {
+            data: Vec<PolymarketMarket>,
+        }
+
+        let wrapper: Wrapper = resp.json().await?;
+        Ok(wrapper.data)
     }
 
     /// Fetch orderbook for a specific token (YES or NO side)
@@ -183,11 +188,11 @@ impl PolymarketBridge {
                 market_id: market.condition_id.clone(),
                 question: market.question.clone(),
                 category: market.category.clone().unwrap_or_else(|| "Other".into()),
-                end_date: market.end_date_iso.clone(),
+                end_date: market.end_date_iso.clone().unwrap_or_else(|| "N/A".into()),
                 yes_price,
                 no_price,
-                volume_24h: market.volume_num_24hr,
-                liquidity: market.liquidity,
+                volume_24h: market.volume_num_24hr.unwrap_or(0.0),
+                liquidity: market.liquidity.unwrap_or(0.0),
                 best_bid,
                 best_ask,
                 spread,

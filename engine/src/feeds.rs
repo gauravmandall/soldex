@@ -9,11 +9,11 @@ use tracing::{error, info, warn};
 use crate::perps::MarketTicker;
 
 // Pyth Hermes SSE URL
-const PYTH_HERMES_URL: &str = "https://hermes.pyth.network/v2/updates/price/stream?ids[]=";
+const PYTH_HERMES_URL: &str = "https://hermes.pyth.network/v2/updates/price/stream";
 
 // Feed IDs for SOL/USD, BTC/USD, ETH/USD on Pyth
-const SOL_USD_FEED: &str = "0xef0d8b6fda2ce3725338f0821afd0058b7f83f06fa10375a0349639c0fa437d1";
-const BTC_USD_FEED: &str = "0xe62df6c8b4a85fe1a67db44dc12de5bb330f6791b7ad202123b3ad7890615570";
+const SOL_USD_FEED: &str = "0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d";
+const BTC_USD_FEED: &str = "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43";
 const ETH_USD_FEED: &str = "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace";
 
 #[derive(Debug, Deserialize)]
@@ -59,7 +59,7 @@ pub async fn start_pyth_feed(tx: broadcast::Sender<ServerMessage>) -> Result<()>
     info!("🐍 Pyth real-time feed starting...");
     
     let url = format!(
-        "{}{}&ids[]={}&ids[]={}",
+        "{}?parsed=true&ids[]={}&ids[]={}&ids[]={}",
         PYTH_HERMES_URL, SOL_USD_FEED, BTC_USD_FEED, ETH_USD_FEED
     );
 

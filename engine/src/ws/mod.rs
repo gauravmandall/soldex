@@ -317,16 +317,7 @@ async fn handle_client_message(msg: ClientMessage, state: &AppState) {
 }
 
 fn uuid_v4() -> String {
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
-    format!(
-        "{:08x}-{:04x}-4{:03x}-{:04x}-{:012x}",
-        rng.gen::<u32>(),
-        rng.gen::<u16>(),
-        rng.gen::<u16>() & 0x0fff,
-        (rng.gen::<u16>() & 0x3fff) | 0x8000,
-        rng.gen::<u64>() & 0xffffffffffff,
-    )
+    uuid::Uuid::new_v4().to_string()
 }
 
 // shim needed from orderbook mod
