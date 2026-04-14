@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-base:     #080b0f;
+  --bg-panel:    #0d1117;
+  --bg-elevated: #141c24;
+  --bg-border:   #1e2d3d;
+
+  --green:  #00d4a0;
+  --red:    #ff4a6b;
+  --blue:   #3b82f6;
+  --amber:  #f59e0b;
+  --purple: #8b5cf6;
+
+  --text-primary:   #e6edf3;
+  --text-secondary: #7d8590;
+  --text-muted:     #484f58;
+
+  --font-mono:    'IBM Plex Mono', monospace;
+  --font-sans:    'DM Sans', system-ui, sans-serif;
+  --font-display: 'Space Grotesk', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden; /* trading terminal — no page scroll */
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg-border); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* Monospace numbers everywhere in the terminal */
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* Price colors */
+.price-up   { color: var(--green); }
+.price-down { color: var(--red); }
+.price-flat { color: var(--text-secondary); }
+
+/* Panel borders */
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--bg-border);
+}
+
+/* Orderbook depth bar */
+.depth-bid { background: rgba(0, 212, 160, 0.08); }
+.depth-ask { background: rgba(255, 74, 107, 0.08); }
+
+@layer utilities {
+  .text-mono { font-family: var(--font-mono); }
+  .text-display { font-family: var(--font-display); }
+}

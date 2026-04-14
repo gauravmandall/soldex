@@ -1,0 +1,23 @@
+{
+  "name": "soldex",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "engine:dev": "cargo run --manifest-path engine/Cargo.toml",
+    "engine:build": "cargo build --release --manifest-path engine/Cargo.toml",
+    "anchor:build": "anchor build",
+    "anchor:test": "anchor test",
+    "anchor:deploy": "anchor deploy --provider.cluster devnet"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.0.0"
+}

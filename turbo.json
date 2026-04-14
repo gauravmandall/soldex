@@ -1,0 +1,24 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "NODE_ENV",
+    "NEXT_PUBLIC_RPC_URL",
+    "NEXT_PUBLIC_PROGRAM_ID",
+    "NEXT_PUBLIC_NETWORK",
+    "NEXT_PUBLIC_ENGINE_WS_URL",
+    "NEXT_PUBLIC_POLYMARKET_API"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "dependsOn": ["^lint"]
+    }
+  }
+}
