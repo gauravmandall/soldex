@@ -59,7 +59,10 @@ export function TradingTerminal({ defaultMarket = 'SOL-PERP' }: Props) {
         {!connected && (
           <span className="ml-auto text-xs text-yellow-500 flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" /> Reconnecting…
-      
+          </span>
+        )}
+      </div>
+
       {/* Sub-header / Ticker bar */}
       <div className="flex items-center h-12 px-4 border-b border-[#14151f] bg-[#0a0b0f] gap-8 shrink-0">
         <div className="flex flex-col">

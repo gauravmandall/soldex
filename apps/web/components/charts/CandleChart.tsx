@@ -1,3 +1,4 @@
+import React, { useRef, useEffect } from 'react'
 import { usePythCandles } from '@/hooks/usePythCandles'
 
 interface Props { marketId: string; interval: string }
