@@ -15,50 +15,69 @@ export function PolymarketPanel() {
   )
 
   return (
-    <div className="flex flex-col h-full text-xs font-mono">
-      <div className="p-2 border-b border-[#1e2130] flex gap-2 shrink-0">
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search markets…"
-          className="flex-1 bg-[#0a0b0f] border border-[#1e2130] rounded px-2 py-1 text-[#e2e4ef] outline-none focus:border-blue-500/60 text-[11px]" />
-        <button onClick={() => sendMessage({ type: 'get_poly_opportunities' })}
-          className="text-[#4b5068] hover:text-white transition-colors">
+    <div className="flex flex-col h-full text-xs font-mono bg-[#0a0e15]">
+      <div className="p-3 border-b border-[#1e2634] flex gap-2 shrink-0 bg-[#0d1117]">
+        <div className="relative flex-1 group">
+          <input 
+            value={search} 
+            onChange={e => setSearch(e.target.value)} 
+            placeholder="Search prediction markets…"
+            className="w-full bg-[#111827] border border-[#1e2634] rounded-md px-3 py-1.5 text-[#e2e8f0] outline-none group-hover:border-[#3b82f6]/40 focus:border-[#3b82f6] transition-all text-[11px]" 
+          />
+        </div>
+        <button 
+          onClick={() => sendMessage({ type: 'get_poly_opportunities' })}
+          className="p-2 bg-[#111827] border border-[#1e2634] rounded-md text-[#4a5568] hover:text-[#3b82f6] hover:border-[#3b82f6]/40 transition-all active:scale-95">
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
       </div>
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto no-scrollbar">
         {filtered.length === 0 && (
-          <div className="flex items-center justify-center h-full text-[#4b5068]">Loading opportunities…</div>
+          <div className="flex flex-col items-center justify-center h-full gap-3 opacity-40">
+            <RefreshCw className="w-6 h-6 animate-spin text-[#4a5568]" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[#4a5568]">Loading Markets…</span>
+          </div>
         )}
         {filtered.map(opp => (
-          <div key={opp.market_id} className="p-3 border-b border-[#1e2130] hover:bg-[#1a1d28] cursor-pointer transition-colors">
-            <div className="flex items-start justify-between gap-2 mb-1.5">
-              <span className="text-[10px] text-blue-400 uppercase">{opp.category}</span>
-              <span className="text-[10px] text-[#4b5068] whitespace-nowrap">Vol ${(opp.volume_24h / 1000).toFixed(0)}K</span>
+          <div key={opp.market_id} className="p-4 border-b border-[#1e2634] hover:bg-[#111827] cursor-pointer transition-all group">
+            <div className="flex items-start justify-between gap-2 mb-2.5">
+              <span className="text-[9px] font-bold text-[#3b82f6] bg-[#1e3a5f]/30 px-1.5 py-0.5 rounded tracking-wider uppercase">
+                {opp.category}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#10b981] shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
+                <span className="text-[10px] font-bold text-[#4a5568] whitespace-nowrap uppercase">
+                  Vol ${(opp.volume_24h / 1000).toFixed(0)}K
+                </span>
+              </div>
             </div>
-            <p className="text-[11px] text-[#e2e4ef] leading-snug mb-2 line-clamp-2">{opp.question}</p>
-            <div className="flex items-center gap-2">
+            <p className="text-[12px] font-bold text-[#e2e8f0] leading-snug mb-3 line-clamp-2 group-hover:text-[#3b82f6] transition-colors">
+              {opp.question}
+            </p>
+            <div className="flex items-center gap-3">
               <div className="flex-1">
-                <div className="flex justify-between text-[10px] mb-0.5">
-                  <span className="text-green-400">YES</span>
-                  <span className="text-green-400 num">{(opp.yes_price * 100).toFixed(1)}¢</span>
+                <div className="flex justify-between text-[10px] font-bold mb-1.5">
+                  <span className="text-[#10b981]">YES</span>
+                  <span className="text-[#e2e8f0] num">{(opp.yes_price * 100).toFixed(1)}¢</span>
                 </div>
-                <div className="h-1.5 bg-[#13151d] rounded-full overflow-hidden">
-                  <div className="h-full bg-green-500/60 rounded-full" style={{ width: `${opp.yes_price * 100}%` }} />
+                <div className="h-1.5 bg-[#1e2634] rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-[#059669] to-[#10b981] rounded-full shadow-[0_0_12px_rgba(16,185,129,0.2)]" style={{ width: `${opp.yes_price * 100}%` }} />
                 </div>
               </div>
               <div className="flex-1">
-                <div className="flex justify-between text-[10px] mb-0.5">
-                  <span className="text-red-400">NO</span>
-                  <span className="text-red-400 num">{(opp.no_price * 100).toFixed(1)}¢</span>
+                <div className="flex justify-between text-[10px] font-bold mb-1.5">
+                  <span className="text-[#ef4444]">NO</span>
+                  <span className="text-[#e2e8f0] num">{(opp.no_price * 100).toFixed(1)}¢</span>
                 </div>
-                <div className="h-1.5 bg-[#13151d] rounded-full overflow-hidden">
-                  <div className="h-full bg-red-500/60 rounded-full" style={{ width: `${opp.no_price * 100}%` }} />
+                <div className="h-1.5 bg-[#1e2634] rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-[#be123c] to-[#ef4444] rounded-full shadow-[0_0_12px_rgba(239,68,68,0.2)]" style={{ width: `${opp.no_price * 100}%` }} />
                 </div>
               </div>
             </div>
-            <div className="flex justify-between mt-1.5 text-[10px] text-[#4b5068]">
-              <span>Spread {(opp.spread * 100).toFixed(2)}¢</span>
-              <span>Liq ${(opp.liquidity / 1000).toFixed(0)}K</span>
-              <span>Ends {new Date(opp.end_date).toLocaleDateString()}</span>
+            <div className="flex justify-between mt-3 text-[9px] font-bold text-[#4a5568] uppercase tracking-tighter">
+              <span className="flex items-center gap-1"><span className="text-[#94a3b8]">Spread</span> {(opp.spread * 100).toFixed(2)}¢</span>
+              <span className="flex items-center gap-1"><span className="text-[#94a3b8]">Liq</span> ${(opp.liquidity / 1000).toFixed(0)}K</span>
+              <span className="flex items-center gap-1"><span className="text-[#94a3b8]">Ends</span> {new Date(opp.end_date).toLocaleDateString()}</span>
             </div>
           </div>
         ))}
