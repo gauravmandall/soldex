@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use ephemeral_rollups_sdk::cpi::undelegate_account;
+// use ephemeral_rollups_sdk::cpi::undelegate_account;
 use crate::{
     errors::SoldexError,
     state::{MarginAccount, MarketState, Position},
@@ -91,20 +91,21 @@ pub fn handler(ctx: Context<UndelegatePosition>, params: UndelegatePositionParam
         &[bump],
     ]];
 
-    undelegate_account(
-        CpiContext::new_with_signer(
-            ctx.accounts.delegation_program.to_account_info(),
-            ephemeral_rollups_sdk::cpi::accounts::UndelegateAccount {
-                payer:               ctx.accounts.user.to_account_info(),
-                delegate_account:    ctx.accounts.position.to_account_info(),
-                delegation_buffer:   ctx.accounts.delegation_buffer.to_account_info(),
-                delegation_record:   ctx.accounts.delegation_record.to_account_info(),
-                delegation_metadata: ctx.accounts.delegation_metadata.to_account_info(),
-                system_program:      ctx.accounts.system_program.to_account_info(),
-            },
-            signer_seeds,
-        ),
-    )?;
+    // TODO: re-enable once MagicBlock SDK dependency issue is resolved
+    // undelegate_account(
+    //     CpiContext::new_with_signer(
+    //         ctx.accounts.delegation_program.to_account_info(),
+    //         ephemeral_rollups_sdk::cpi::accounts::UndelegateAccount {
+    //             payer:               ctx.accounts.user.to_account_info(),
+    //             delegate_account:    ctx.accounts.position.to_account_info(),
+    //             delegation_buffer:   ctx.accounts.delegation_buffer.to_account_info(),
+    //             delegation_record:   ctx.accounts.delegation_record.to_account_info(),
+    //             delegation_metadata: ctx.accounts.delegation_metadata.to_account_info(),
+    //             system_program:      ctx.accounts.system_program.to_account_info(),
+    //         },
+    //         signer_seeds,
+    //     ),
+    // )?;
 
     emit!(PositionUndelegated {
         user:      owner,

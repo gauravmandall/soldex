@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use ephemeral_rollups_sdk::cpi::delegate_account;
+// use ephemeral_rollups_sdk::cpi::delegate_account;
 use crate::{
     errors::SoldexError,
     state::{MarginAccount, MarketState, Position},
@@ -108,21 +108,22 @@ pub fn handler(ctx: Context<DelegatePosition>, params: DelegatePositionParams) -
         &[bump],
     ]];
 
-    delegate_account(
-        CpiContext::new_with_signer(
-            ctx.accounts.delegation_program.to_account_info(),
-            ephemeral_rollups_sdk::cpi::accounts::DelegateAccount {
-                payer:               ctx.accounts.user.to_account_info(),
-                delegate_account:    ctx.accounts.position.to_account_info(),
-                delegation_buffer:   ctx.accounts.delegation_buffer.to_account_info(),
-                delegation_record:   ctx.accounts.delegation_record.to_account_info(),
-                delegation_metadata: ctx.accounts.delegation_metadata.to_account_info(),
-                system_program:      ctx.accounts.system_program.to_account_info(),
-            },
-            signer_seeds,
-        ),
-        valid_until,
-    )?;
+    //  re-enable once MagicBlock SDK dependency issue is resolved
+    // delegate_account(
+    //     CpiContext::new_with_signer(
+    //         ctx.accounts.delegation_program.to_account_info(),
+    //         ephemeral_rollups_sdk::cpi::accounts::DelegateAccount {
+    //             payer:               ctx.accounts.user.to_account_info(),
+    //             delegate_account:    ctx.accounts.position.to_account_info(),
+    //             delegation_buffer:   ctx.accounts.delegation_buffer.to_account_info(),
+    //             delegation_record:   ctx.accounts.delegation_record.to_account_info(),
+    //             delegation_metadata: ctx.accounts.delegation_metadata.to_account_info(),
+    //             system_program:      ctx.accounts.system_program.to_account_info(),
+    //         },
+    //         signer_seeds,
+    //     ),
+    //     valid_until,
+    // )?;
 
     emit!(PositionDelegated {
         user:             owner,
