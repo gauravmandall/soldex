@@ -12,6 +12,8 @@ pub mod state;
 
 use instructions::*;
 use state::*;
+use instructions::delegate_position::{DelegatePosition, DelegatePositionParams};
+use instructions::undelegate_position::{UndelegatePosition, UndelegatePositionParams};
 
 #[program]
 pub mod soldex_perps {
@@ -68,5 +70,19 @@ pub mod soldex_perps {
     /// Apply funding rate payments (called by keeper every 8h)
     pub fn settle_funding(ctx: Context<SettleFunding>) -> Result<()> {
         instructions::settle_funding::handler(ctx)
+    }
+
+    pub fn delegate_position(
+    ctx: Context<DelegatePosition>,
+    params: DelegatePositionParams,
+    ) -> Result<()> {
+    instructions::delegate_position::handler(ctx, params)
+    }
+
+    pub fn undelegate_position(
+    ctx: Context<UndelegatePosition>,
+    params: UndelegatePositionParams,
+    ) -> Result<()> {
+    instructions::undelegate_position::handler(ctx, params)
     }
 }

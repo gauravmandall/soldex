@@ -6,3 +6,5 @@ pub mod open_position;
 pub mod close_position;
 pub mod liquidate;
 pub mod settle_funding;
+pub mod delegate_position;
+pub mod undelegate_position;
