@@ -3,7 +3,7 @@ import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { SelfCustodyWalletButton } from '../wallet/SelfCustodyWalletButton'
-import { Shield, Activity, AlertCircle } from 'lucide-react'
+import { Shield, Activity, AlertCircle, Terminal, Cpu, Globe, BarChart3 } from 'lucide-react'
 import { useMarketStore } from '@/hooks/useMarketStore'
 import { useSelfCustodyWallet } from '@/hooks/useSelfCustodyWallet'
 
@@ -13,61 +13,70 @@ export function TopBar({ connected }: { connected: boolean }) {
   const { rotationDue } = useSelfCustodyWallet()
 
   const nav = [
-    { href: '/',           label: 'Perps' },
+    { href: '/',           label: 'PERPS', icon: Cpu },
     { 
       href: '/polymarket', 
-      label: (
-        <span className="flex items-center gap-1.5">
-          Polymarket
-          {polyOpportunities.length > 0 && (
-            <span className="bg-blue-500/10 text-[#3b82f6] text-[9px] px-1 py-0.5 rounded-full font-bold">
-              {polyOpportunities.length}
-            </span>
-          )}
-        </span>
-      )
+      label: 'PREDICTIONS',
+      icon: Globe,
+      badge: polyOpportunities.length > 0 ? polyOpportunities.length : null
     },
-    { href: '/portfolio',  label: 'Portfolio' },
+    { href: '/portfolio',  label: 'PORTFOLIO', icon: BarChart3 },
     { 
       href: '/rotate',     
-      label: (
-        <span className="flex items-center gap-1.5">
-          ⟳ Rotate
-          {rotationDue && (
-            <AlertCircle className="w-3 h-3 text-yellow-500 animate-pulse" />
-          )}
-        </span>
-      )
+      label: 'ROTATE',
+      icon: Activity,
+      alert: rotationDue
     },
   ]
+
   return (
-    <header className="flex items-center h-[44px] px-4 border-b border-[#1e2634] bg-[#0d1117] shrink-0 gap-0">
-      <div className="flex items-center gap-2 px-4 border-r border-[#1e2634] h-full mr-4">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-[#3b82f6]">
-          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-          <path d="M8 12l3 3 5-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-        </svg>
-        <span className="font-bold text-[#e2e8f0] tracking-tight text-sm uppercase letter-spacing-[-0.3px]">Soldex</span>
+    <header className="flex items-center h-[44px] px-4 border-b border-[var(--bd)] bg-[var(--bg1)] shrink-0 gap-0 font-mono">
+      <div className="flex items-center gap-2 pr-6 border-r border-[var(--bd)] h-full">
+        <div className="flex items-center gap-2">
+           <Terminal className="w-5 h-5 text-[var(--green)]" />
+           <span className="text-[14px] font-bold tracking-[2px] uppercase">SOLDEX.<span className="text-[var(--green)]">FI</span></span>
+        </div>  
       </div>
-      <nav className="flex items-center gap-1 h-full">
-        {nav.map(({ href, label }) => (
+
+      <nav className="flex items-center h-full ml-4 gap-1">
+        {nav.map(({ href, label, icon: Icon, badge, alert }) => (
           <Link key={href} href={href}
-            className={`px-4 h-full flex items-center text-xs transition-all duration-150 border-b-2 ${
+            className={`px-4 h-full flex items-center gap-2 text-[10px] font-bold tracking-widest transition-all duration-150 border-b-2 ${
               path === href 
-                ? 'text-[#e2e8f0] font-semibold border-[#3b82f6]' 
-                : 'text-[#64748b] border-transparent hover:text-[#8b90a8]'
+                ? 'text-[var(--green)] border-[var(--green)] bg-[var(--bg2)]/50' 
+                : 'text-[var(--tx2)] border-transparent hover:text-[var(--tx)] hover:bg-[var(--bg2)]/30'
             }`}>
+            <Icon className="w-3.5 h-3.5" />
             {label}
+            {badge && (
+              <span className="bg-[var(--blue)]/20 text-[var(--blue)] text-[9px] px-1.5 py-0.5 rounded-[2px] font-bold ml-1">
+                {badge}
+              </span>
+            )}
+            {alert && (
+              <AlertCircle className="w-3 h-3 text-[var(--amber)] animate-pulse" />
+            )}
           </Link>
         ))}
       </nav>
-      <div className="ml-auto flex items-center gap-3">
-        <div className="flex items-center gap-2 px-3 py-1 rounded-md bg-[#1e2634] text-[10px] font-mono">
-          <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-green-400' : 'bg-red-400'} animate-pulse`} />
-          <span className={connected ? 'text-green-400' : 'text-red-400'}>
-            {connected ? 'Engine Online' : 'Engine Offline'}
-          </span>
+
+      <div className="ml-auto flex items-center gap-6">
+        <div className="flex items-center gap-4">
+           <div className="flex items-center gap-2 px-3 py-1 border border-[var(--bd)] bg-[var(--bg2)]">
+              <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-[var(--green)] shadow-[0_0_8px_var(--green)]' : 'bg-[var(--red)]'} animate-pulse`} />
+              <span className={`text-[9px] font-bold uppercase tracking-tighter ${connected ? 'text-[var(--green)]' : 'text-[var(--red)]'}`}>
+                {connected ? 'Engine Online' : 'Engine Offline'}
+              </span>
+           </div>
+           
+           <div className="flex items-center gap-2 text-[10px] text-[var(--tx3)] uppercase">
+              <Activity className="w-3 h-3" />
+              <span>Network: <span className="text-[var(--tx)] font-bold">Mainnet</span></span>
+           </div>
         </div>
+
+        <div className="w-[1px] h-4 bg-[var(--bd)]" />
+        
         <SelfCustodyWalletButton />
       </div>
     </header>

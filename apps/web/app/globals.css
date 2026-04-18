@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -9,6 +11,14 @@
   --bg-elevated:  #111827;
   --bg-border:    #1e2634;
   --bg-hover:     #1c212e;
+
+  /* PolymTrade Theme */
+  --bg: #060608; --bg1: #0c0c10; --bg2: #111116;
+  --bd: #1e1e28; --bd2: #2a2a38; --bd3: #383848;
+  --tx: #d4d4e0; --tx2: #8888a8; --tx3: #555568;
+  --green: #00e676; --red: #ff4444; --amber: #ffaa00;
+  --blue: #4488ff; --purple: #aa66ff;
+  --mono: 'JetBrains Mono', monospace;
 
   --text-primary:   #e2e8f0;
   --text-secondary: #94a3b8;
@@ -115,3 +125,11 @@ body {
 }
 .flash-green { animation: flash-green 0.3s ease; }
 .flash-red   { animation: flash-red 0.3s ease; }
+@keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(0,230,118,.4); } 50% { box-shadow: 0 0 0 4px rgba(0,230,118,0); } }
+
+.ticker-scroll {
+  display: inline-block;
+  white-space: nowrap;
+  animation: scroll 30s linear infinite;
+}

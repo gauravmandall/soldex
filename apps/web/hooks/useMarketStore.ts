@@ -92,9 +92,12 @@ interface MarketStore {
   positions: Position[]
   openOrders: OpenOrder[]
   polyOpportunities: PolyOpportunity[]
+  selectedPolyMarketId: string | null
+  polyMarketHistory: { time: number; price: number }[]
   pendingTxs: { requestId: string; description: string; txBase64: string }[]
 
   setActiveMarket: (id: string) => void
+  setSelectedPolyMarket: (id: string | null) => void
   handleEngineMessage: (msg: unknown) => void
   addPosition: (p: Position) => void
   removePosition: (marketId: string) => void
@@ -110,9 +113,16 @@ export const useMarketStore = create<MarketStore>()(
     positions: [],
     openOrders: [],
     polyOpportunities: [],
+    selectedPolyMarketId: null,
+    polyMarketHistory: [],
     pendingTxs: [],
 
     setActiveMarket: (id) => set((s) => { s.activeMarket = id }),
+    setSelectedPolyMarket: (id) => set((s) => { 
+      s.selectedPolyMarketId = id;
+      // When a new market is selected, we'll fetch its history
+      // In a real app, this would trigger an effect or another action
+    }),
 
     handleEngineMessage: (msg: any) => {
       if (!msg?.type) return
