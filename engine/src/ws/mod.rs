@@ -1,7 +1,7 @@
 use crate::{
     orderbook::{Fill, Order, OrderbookSnapshot, OrderType, Side},
     perps::{MarketTicker, PositionSide},
-    polymarket::PolyOpportunity,
+    polymarket::{PolyOpportunity, PolyWsMessage},
     AppState,
 };
 use axum::extract::ws::{Message, WebSocket};
@@ -82,6 +82,9 @@ pub enum ServerMessage {
 
     /// Polymarket opportunities
     PolymarketOpportunities { opportunities: Vec<PolyOpportunity> },
+
+    /// Real-time Polymarket updates from CLOB WS
+    PolymarketUpdate { update: PolyWsMessage },
 
     /// Order acknowledged
     OrderAck {

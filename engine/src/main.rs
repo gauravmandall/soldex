@@ -89,12 +89,21 @@ async fn main() -> Result<()> {
         }
     });
 
-    // Spawn Polymarket feed
+    // Spawn Polymarket feeds
     let pm_bridge = polymarket.clone();
     let tx_clone = broadcast_tx.clone();
     tokio::spawn(async move {
         if let Err(e) = feeds::start_polymarket_feed(pm_bridge, tx_clone).await {
-            error!("Polymarket feed error: {e}");
+            error!("Polymarket opportunity feed error: {e}");
+        }
+    });
+
+    let pm_bridge = polymarket.clone();
+    let tx_clone = broadcast_tx.clone();
+    tokio::spawn(async move {
+        use crate::polymarket::start_polymarket_ws_feed;
+        if let Err(e) = start_polymarket_ws_feed(pm_bridge, tx_clone).await {
+            error!("Polymarket WS feed error: {e}");
         }
     });
 

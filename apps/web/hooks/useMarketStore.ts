@@ -62,6 +62,8 @@ export interface PolyOpportunity {
   end_date: string
   yes_price: number
   no_price: number
+  yes_token_id: string
+  no_token_id: string
   volume_24h: number
   liquidity: number
   best_bid: number
@@ -81,6 +83,22 @@ export interface OpenOrder {
   timestamp: number
 }
 
+export interface PolyOrderbook {
+  market_id: string
+  asset_id: string
+  bids: { price: number; size: number }[]
+  asks: { price: number; size: number }[]
+  timestamp: string
+}
+
+export interface PolyTrade {
+  asset_id: string
+  price: number
+  size: number
+  side: 'BUY' | 'SELL'
+  timestamp: string
+}
+
 // ─── Store ────────────────────────────────────────────────────────────────────
 
 interface MarketStore {
@@ -93,6 +111,8 @@ interface MarketStore {
   openOrders: OpenOrder[]
   polyOpportunities: PolyOpportunity[]
   selectedPolyMarketId: string | null
+  polyOrderbooks: Record<string, PolyOrderbook> // key: asset_id or market_id
+  polyTrades: Record<string, PolyTrade[]>
   polyMarketHistory: { time: number; price: number }[]
   pendingTxs: { requestId: string; description: string; txBase64: string }[]
 
@@ -114,6 +134,8 @@ export const useMarketStore = create<MarketStore>()(
     openOrders: [],
     polyOpportunities: [],
     selectedPolyMarketId: null,
+    polyOrderbooks: {},
+    polyTrades: {},
     polyMarketHistory: [],
     pendingTxs: [],
 
@@ -159,6 +181,44 @@ export const useMarketStore = create<MarketStore>()(
           case 'polymarket_opportunities':
             s.polyOpportunities = msg.opportunities
             break
+
+          case 'polymarket_update': {
+            const update = msg.update
+            if (update.type === 'book') {
+              const book: PolyOrderbook = {
+                market_id: update.market_id,
+                asset_id: update.asset_id,
+                bids: update.bids.map((b: any) => ({ price: parseFloat(b.price), size: parseFloat(b.size) })),
+                asks: update.asks.map((a: any) => ({ price: parseFloat(a.price), size: parseFloat(a.size) })),
+                timestamp: update.timestamp,
+              }
+              s.polyOrderbooks[book.asset_id] = book
+              
+              // Also update the opportunity price if it exists
+              const opp = s.polyOpportunities.find(o => o.market_id === book.market_id)
+              if (opp) {
+                // Determine if this is YES or NO token? 
+                // Usually market_id in opportunities is the condition_id.
+                // In WS, market_id might be condition_id too.
+                // For now, let's assume we can find the opp and update its best bid/ask
+                if (book.bids.length > 0) opp.best_bid = book.bids[0].price
+                if (book.asks.length > 0) opp.best_ask = book.asks[0].price
+                opp.yes_price = (opp.best_bid + opp.best_ask) / 2
+              }
+            } else if (update.type === 'trades') {
+              const trade: PolyTrade = {
+                asset_id: update.asset_id,
+                price: parseFloat(update.price),
+                size: parseFloat(update.size),
+                side: update.side,
+                timestamp: update.timestamp,
+              }
+              if (!s.polyTrades[trade.asset_id]) s.polyTrades[trade.asset_id] = []
+              s.polyTrades[trade.asset_id].unshift(trade)
+              if (s.polyTrades[trade.asset_id].length > 50) s.polyTrades[trade.asset_id].length = 50
+            }
+            break
+          }
 
           case 'order_ack':
             // Could add to openOrders here

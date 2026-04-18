@@ -46,6 +46,12 @@ export function PolyMarketDetail({ market, onBack }: Props) {
   const shares = amount ? (parseFloat(amount) / prob).toFixed(1) : "—"
   const potentialReturn = amount ? ((parseFloat(amount) / prob) - parseFloat(amount)).toFixed(2) : "—"
 
+  // Real data from store
+  const activeTokenId = side === 'YES' ? market.yes_token_id : market.no_token_id
+  const { polyOrderbooks, polyTrades } = useMarketStore()
+  const currentBook = polyOrderbooks[activeTokenId]
+  const currentTrades = polyTrades[activeTokenId] || []
+
   return (
     <motion.div 
       initial={{ opacity: 0, x: 20 }}
@@ -151,7 +157,7 @@ export function PolyMarketDetail({ market, onBack }: Props) {
               </div>
               
               <div className="flex flex-col gap-2 mt-2">
-                 <DetailRow label="Avg Price" value={`${(prob * 100).toFixed(0)}¢`} />
+                 <DetailRow label="Avg Price" value={`${(prob * 100).toFixed(1)}¢`} />
                  <DetailRow label="Shares" value={shares} />
                  <DetailRow label="Max Return" value={potentialReturn !== '—' ? `+$${potentialReturn}` : '—'} green />
               </div>
@@ -159,44 +165,67 @@ export function PolyMarketDetail({ market, onBack }: Props) {
               <button className={`w-full py-4 mt-2 text-[11px] font-bold uppercase tracking-[2px] transition-all active:scale-95 ${
                 side === 'YES' ? 'bg-[var(--green)] text-black hover:bg-[#00c853]' : 'bg-[var(--red)] text-white hover:bg-[#cc3333]'
               }`}>
-                Buy {side} @ {(prob * 100).toFixed(0)}¢
+                Buy {side} @ {(prob * 100).toFixed(1)}¢
               </button>
            </div>
         </div>
 
-        {/* ORDER BOOK (Simplified mock for UI) */}
+        {/* ORDER BOOK */}
         <div className="h-[44px] border-y border-[var(--bd)] flex items-center px-4 bg-[var(--bg1)] shrink-0">
-          <span className="text-[10px] font-bold text-[var(--tx3)] uppercase tracking-widest">Order Book</span>
+          <span className="text-[10px] font-bold text-[var(--tx3)] uppercase tracking-widest">Order Book ({side})</span>
         </div>
-        <div className="p-4 overflow-hidden">
+        <div className="p-4 overflow-hidden min-h-[150px]">
            <table className="w-full text-[10px] font-mono">
               <thead>
                  <tr className="text-[var(--tx3)] text-left uppercase">
                     <th className="pb-2 font-bold tracking-widest">Price</th>
-                    <th className="pb-2 font-bold tracking-widest">Shares</th>
-                    <th className="pb-2 font-bold tracking-widest text-right">Value</th>
+                    <th className="pb-2 font-bold tracking-widest text-right">Size</th>
                  </tr>
               </thead>
               <tbody>
-                 {[0,1,2].map(i => (
-                   <tr key={`ask-${i}`} className="relative h-6">
-                      <td className="text-[var(--red)] font-bold">{(market.yes_price + 0.01 + i*0.01).toFixed(2)}</td>
-                      <td>{(Math.random() * 5000 + 500).toFixed(0)}</td>
-                      <td className="text-right text-[var(--tx2)]">${(Math.random() * 1000).toFixed(0)}</td>
+                 {currentBook?.asks.slice(0, 5).reverse().map((ask, i) => (
+                   <tr key={`ask-${i}`} className="relative h-5">
+                      <td className="text-[var(--red)] font-bold">{ask.price.toFixed(3)}</td>
+                      <td className="text-right text-[var(--tx2)]">{ask.size.toLocaleString()}</td>
                    </tr>
                  ))}
                  <tr className="h-8 border-y border-[var(--bd)]/50">
-                    <td colSpan={3} className="text-center text-[var(--amber)] font-bold tracking-widest">MID {(market.yes_price).toFixed(2)}</td>
+                    <td colSpan={2} className="text-center text-[var(--amber)] font-bold tracking-widest">SPREAD {((currentBook?.asks[0]?.price || 0) - (currentBook?.bids[0]?.price || 0)).toFixed(4)}</td>
                  </tr>
-                 {[0,1,2].map(i => (
-                   <tr key={`bid-${i}`} className="relative h-6">
-                      <td className="text-[var(--green)] font-bold">{(market.yes_price - 0.01 - i*0.01).toFixed(2)}</td>
-                      <td>{(Math.random() * 5000 + 500).toFixed(0)}</td>
-                      <td className="text-right text-[var(--tx2)]">${(Math.random() * 1000).toFixed(0)}</td>
+                 {currentBook?.bids.slice(0, 5).map((bid, i) => (
+                   <tr key={`bid-${i}`} className="relative h-5">
+                      <td className="text-[var(--green)] font-bold">{bid.price.toFixed(3)}</td>
+                      <td className="text-right text-[var(--tx2)]">{bid.size.toLocaleString()}</td>
                    </tr>
                  ))}
+                 {(!currentBook || (currentBook.bids.length === 0 && currentBook.asks.length === 0)) && (
+                   <tr>
+                     <td colSpan={2} className="py-8 text-center text-[var(--tx3)] italic uppercase tracking-widest text-[9px]">Connecting to live book...</td>
+                   </tr>
+                 )}
               </tbody>
            </table>
+        </div>
+
+        {/* RECENT TRADES */}
+        <div className="h-[44px] border-y border-[var(--bd)] flex items-center px-4 bg-[var(--bg1)] shrink-0">
+          <span className="text-[10px] font-bold text-[var(--tx3)] uppercase tracking-widest">Recent Trades</span>
+        </div>
+        <div className="p-4">
+           <div className="flex flex-col gap-1">
+              {currentTrades.slice(0, 10).map((t, i) => (
+                <div key={i} className="flex justify-between items-center text-[10px]">
+                  <span className={t.side === 'BUY' ? 'text-[var(--green)]' : 'text-[var(--red)]'}>
+                    {t.side} @ {t.price.toFixed(3)}
+                  </span>
+                  <span className="text-[var(--tx2)]">{t.size.toLocaleString()}</span>
+                  <span className="text-[var(--tx3)]">{new Date(t.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                </div>
+              ))}
+              {currentTrades.length === 0 && (
+                <div className="py-4 text-center text-[var(--tx3)] italic uppercase tracking-widest text-[9px]">No recent trades</div>
+              )}
+           </div>
         </div>
       </div>
     </motion.div>

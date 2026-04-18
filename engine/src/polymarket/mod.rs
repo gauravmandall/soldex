@@ -57,6 +57,25 @@ pub struct PolyPriceLevel {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum PolyWsMessage {
+    Book {
+        market_id: String,
+        asset_id: String,
+        bids: Vec<PolyPriceLevel>,
+        asks: Vec<PolyPriceLevel>,
+        timestamp: String,
+    },
+    Trades {
+        asset_id: String,
+        price: String,
+        size: String,
+        side: String, // "BUY" | "SELL"
+        timestamp: String,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PostOrderRequest {
     pub order_type: String, // "FOK" | "GTC" | "GTD"
     pub token_id: String,
@@ -88,6 +107,8 @@ pub struct PolyOpportunity {
     pub end_date: String,
     pub yes_price: f64,          // 0.0–1.0 probability
     pub no_price: f64,
+    pub yes_token_id: String,
+    pub no_token_id: String,
     pub volume_24h: f64,
     pub liquidity: f64,
     pub best_bid: f64,
@@ -213,6 +234,8 @@ impl PolymarketBridge {
                 end_date: market.end_date_iso.clone().unwrap_or_else(|| "N/A".into()),
                 yes_price,
                 no_price,
+                yes_token_id: yes_token.map(|t| t.token_id.clone()).unwrap_or_default(),
+                no_token_id: no_token.map(|t| t.token_id.clone()).unwrap_or_default(),
                 volume_24h: market.volume_num_24hr.unwrap_or(0.0),
                 liquidity: market.liquidity.unwrap_or(0.0),
                 best_bid,
@@ -270,4 +293,93 @@ impl PolymarketBridge {
         Ok(resp.json().await?)
     }
 
+}
+
+/// Starts the real-time Polymarket WebSocket feed
+pub async fn start_polymarket_ws_feed(
+    bridge: Arc<PolymarketBridge>,
+    tx: broadcast::Sender<ServerMessage>,
+) -> Result<()> {
+    use futures_util::{SinkExt, StreamExt};
+    use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
+
+    info!("⬡ Polymarket CLOB WebSocket feed starting...");
+
+    loop {
+        // 1. Discover top markets to subscribe to
+        let markets = match bridge.fetch_active_markets().await {
+            Ok(m) => m,
+            Err(e) => {
+                error!("Failed to fetch markets for WS subscription: {e}");
+                tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+                continue;
+            }
+        };
+
+        let mut token_ids = Vec::new();
+        for m in markets.iter().take(20) {
+            for t in &m.tokens {
+                token_ids.push(t.token_id.clone());
+            }
+        }
+
+        if token_ids.is_empty() {
+            warn!("No Polymarket tokens found to subscribe to");
+            tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+            continue;
+        }
+
+        info!("Subscribing to {} Polymarket tokens", token_ids.len());
+
+        // 2. Connect to WebSocket
+        let ws_url = &bridge.config.polymarket_ws_url;
+        let (mut ws_stream, _) = match connect_async(ws_url).await {
+            Ok(s) => s,
+            Err(e) => {
+                error!("Failed to connect to Polymarket WS {}: {}", ws_url, e);
+                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                continue;
+            }
+        };
+
+        // 3. Subscribe
+        let sub_msg = serde_json::json!({
+            "type": "subscribe",
+            "assets_ids": token_ids
+        });
+
+        if let Err(e) = ws_stream.send(Message::Text(sub_msg.to_string())).await {
+            error!("Failed to send subscription message: {e}");
+            continue;
+        }
+
+        // 4. Handle messages
+        while let Some(msg) = ws_stream.next().await {
+            match msg {
+                Ok(Message::Text(text)) => {
+                    match serde_json::from_str::<PolyWsMessage>(&text) {
+                        Ok(poly_msg) => {
+                            let _ = tx.send(ServerMessage::PolymarketUpdate { update: poly_msg });
+                        }
+                        Err(e) => {
+                            // Some messages might be just acks or other types we don't handle
+                            debug!("Ignored Polymarket WS message: {} (Error: {})", text, e);
+                        }
+                    }
+                }
+                Ok(Message::Close(_)) => {
+                    warn!("Polymarket WS connection closed");
+                    break;
+                }
+                Err(e) => {
+                    error!("Polymarket WS error: {e}");
+                    break;
+                }
+                _ => {}
+            }
+        }
+
+        warn!("Polymarket WS disconnected, reconnecting in 5s...");
+        tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+    }
 }
