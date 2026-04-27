@@ -6,7 +6,8 @@ skip-lint = false
 soldex_perps = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 
 [programs.devnet]
-soldex_perps = "REPLACE_WITH_DEPLOYED_PROGRAM_ID"
+# Temporary valid placeholder for local build; replace with actual deployed program ID before devnet deploy
+soldex_perps = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 
 [registry]
 url = "https://api.apr.dev"
