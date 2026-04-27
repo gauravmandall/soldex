@@ -159,9 +159,24 @@ export const useMarketStore = create<MarketStore>()(
 
           case 'ticker_update': {
             const t: MarketTicker = msg.ticker
-            s.tickers[t.market_id] = t
+            // Merge with existing ticker to preserve stats (vol, high, low) if not provided
+            const existing = s.tickers[t.market_id]
+            if (existing) {
+              s.tickers[t.market_id] = {
+                ...existing,
+                ...t,
+                // Only overwrite stats if they are non-zero in the new update
+                volume_24h: t.volume_24h || existing.volume_24h,
+                high_24h: t.high_24h || existing.high_24h,
+                low_24h: t.low_24h || existing.low_24h,
+                change_pct_24h: t.change_pct_24h || existing.change_pct_24h,
+              }
+            } else {
+              s.tickers[t.market_id] = t
+            }
+            
             if (t.market_id === s.activeMarket) {
-              s.ticker = t
+              s.ticker = s.tickers[t.market_id]
             }
             break
           }

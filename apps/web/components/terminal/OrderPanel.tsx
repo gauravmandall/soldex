@@ -65,6 +65,12 @@ export function OrderPanel({ marketId }: Props) {
 
   return (
     <div className="flex flex-col h-full bg-[#0d1117] border-l border-[#1e2634]">
+      {/* Jupiter Indicator */}
+      <div className="flex items-center gap-2 px-4 py-2 bg-[var(--blue)]/5 border-b border-[var(--bd)]">
+        <div className="w-1.5 h-1.5 rounded-full bg-[var(--blue)] animate-pulse" />
+        <span className="text-[9px] font-bold text-[var(--blue)] uppercase tracking-[2px]">Jupiter Perps v2</span>
+      </div>
+
       {/* Mode Toggle */}
       <div className="flex border-b border-[#1e2634] shrink-0">
         {(['market', 'limit'] as const).map(m => (

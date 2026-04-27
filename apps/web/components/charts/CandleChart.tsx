@@ -1,5 +1,7 @@
-import React, { useRef, useEffect } from 'react'
-import { useHyperliquidCandles } from '@/hooks/useHyperliquidCandles'
+import React, { useRef, useEffect, useMemo } from 'react'
+import { useJupiterCandles } from '@/hooks/useJupiterCandles'
+import { useMarketStore } from '@/hooks/useMarketStore'
+import { UTCTimestamp } from 'lightweight-charts'
 
 interface Props { marketId: string; interval: string }
 
@@ -7,7 +9,17 @@ export function CandleChart({ marketId, interval }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<any>(null)
   const seriesRef = useRef<any>(null)
-  const { data, loading } = useHyperliquidCandles(marketId, interval)
+  const { data, loading } = useJupiterCandles(marketId, interval)
+  const ticker = useMarketStore((s) => s.ticker)
+
+  // Interval in seconds helper
+  const intervalSeconds = useMemo(() => {
+    const num = parseInt(interval)
+    if (interval.endsWith('m')) return num * 60
+    if (interval.endsWith('h')) return num * 3600
+    if (interval.endsWith('d')) return num * 86400
+    return 60
+  }, [interval])
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -78,14 +90,46 @@ export function CandleChart({ marketId, interval }: Props) {
       
       return () => { ro.disconnect(); chart.remove() }
     })
-  }, [marketId]) // Only re-create chart if market changes, interval-driven history update happens via series.setData
+  }, [marketId])
 
-  // Update data separately to avoid chart flickering
+  const lastBarRef = useRef<any>(null)
+
+  // Initial data load
   useEffect(() => {
     if (seriesRef.current && data.length > 0) {
       seriesRef.current.setData(data)
+      lastBarRef.current = data[data.length - 1]
     }
-  }, [data])
+  }, [data, marketId])
+
+  // Real-time update from ticker
+  useEffect(() => {
+    if (!ticker || ticker.market_id !== marketId || !seriesRef.current) return
+
+    const price = ticker.price
+    const timestamp = Math.floor((ticker.timestamp || Date.now()) / 1000)
+    const time = (Math.floor(timestamp / intervalSeconds) * intervalSeconds) as UTCTimestamp
+
+    let bar = lastBarRef.current
+    
+    if (!bar || bar.time < time) {
+      // New bar
+      bar = { time, open: price, high: price, low: price, close: price }
+    } else if (bar.time === time) {
+      // Update existing bar
+      bar.high = Math.max(bar.high, price)
+      bar.low = Math.min(bar.low, price)
+      bar.close = price
+    } else {
+      // Ticker is older than last bar
+      return
+    }
+
+    lastBarRef.current = bar
+    seriesRef.current.update(bar)
+    // Optional: Keep chart at the end if it was already at the end
+    // chartRef.current.timeScale().scrollToPosition(0, true)
+  }, [ticker, marketId, intervalSeconds])
 
   return (
     <div className="relative w-full h-full group">

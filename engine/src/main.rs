@@ -22,7 +22,7 @@ mod polymarket;
 mod risk;
 mod wallet;
 mod ws;
-mod hyperliquid;
+mod jupiter_perps;
 
 use config::EngineConfig;
 use orderbook::OrderbookEngine;
@@ -74,18 +74,18 @@ async fn main() -> Result<()> {
         broadcast_tx: broadcast_tx.clone(),
     };
 
-    // Spawn Hyperliquid feed
+    // Spawn Jupiter Perps feed
     let tx_clone = broadcast_tx.clone();
     tokio::spawn(async move {
-        if let Err(e) = hyperliquid::start_hyperliquid_feed(tx_clone).await {
-            error!("Hyperliquid WebSocket feed error: {e}");
+        if let Err(e) = jupiter_perps::start_jupiter_feed(tx_clone).await {
+            error!("Jupiter Perps feed error: {e}");
         }
     });
 
     let tx_clone = broadcast_tx.clone();
     tokio::spawn(async move {
-        if let Err(e) = hyperliquid::start_hyperliquid_stats_poller(tx_clone).await {
-            error!("Hyperliquid stats poller error: {e}");
+        if let Err(e) = jupiter_perps::start_jupiter_stats_poller(tx_clone).await {
+            error!("Jupiter stats poller error: {e}");
         }
     });
 

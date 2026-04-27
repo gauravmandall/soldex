@@ -187,6 +187,20 @@ impl PerpsEngine {
         markets.insert("SOL-USDC".into(), PerpsMarket::sol_perp());
         markets.insert("BTC-USDC".into(), PerpsMarket::btc_perp());
         markets.insert("ETH-USDC".into(), PerpsMarket::eth_perp());
+        markets.insert("JUP-USDC".into(), PerpsMarket {
+            id: "JUP-USDC".into(),
+            base: "JUP".into(),
+            quote: "USDC".into(),
+            tick_size: 0.0001,
+            lot_size: 1.0,
+            max_leverage: 10.0,
+            maker_fee: 0.0002,
+            taker_fee: 0.0005,
+            funding_rate: 0.00015,
+            open_interest: 0.0,
+            mark_price: 0.0,
+            index_price: 0.0,
+        });
 
         Ok(Self {
             config,

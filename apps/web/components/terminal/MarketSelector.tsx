@@ -3,7 +3,7 @@ import React, { useState } from 'react'
 import { useMarketStore } from '@/hooks/useMarketStore'
 import { ChevronDown } from 'lucide-react'
 
-const MARKETS = ['SOL-USDC', 'BTC-USDC', 'ETH-USDC']
+const MARKETS = ['SOL-USDC', 'BTC-USDC', 'ETH-USDC', 'JUP-USDC']
 
 export function MarketSelector() {
   const { activeMarket, setActiveMarket } = useMarketStore()
@@ -22,7 +22,7 @@ export function MarketSelector() {
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute top-full left-0 mt-2 bg-[#111827] border border-[#1e2634] rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.5)] z-50 min-w-[180px] py-1 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
             <div className="px-3 py-1.5 text-[9px] font-bold text-[#4a5568] uppercase tracking-widest border-b border-[#1e2634] mb-1">
-              Popular Markets
+              Jupiter Perps Markets
             </div>
             {MARKETS.map(m => (
               <button key={m} onClick={() => { setActiveMarket(m); setOpen(false) }}

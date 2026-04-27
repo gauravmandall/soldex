@@ -169,7 +169,7 @@ export function EngineProvider({ children }: { children: React.ReactNode }) {
       setConnected(true);
       reconnectCount.current = 0;
       // Subscribe to all perps markets on connect
-      ["SOL-PERP", "BTC-PERP", "ETH-PERP"].forEach((id) => {
+      ["SOL-USDC", "BTC-USDC", "ETH-USDC", "JUP-USDC"].forEach((id) => {
         socket.send(JSON.stringify({ type: "subscribe", market_id: id }));
       });
     };

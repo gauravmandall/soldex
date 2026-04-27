@@ -14,7 +14,7 @@ import { PolymarketPanel } from '../polymarket/PolymarketPanel'
 import { PrivacyBanner } from '../privacy/PrivacyBanner'
 import { Zap, Activity, Info, ChevronRight, BarChart3, Clock } from 'lucide-react'
 
-export const MARKETS = ['SOL-USDC', 'BTC-USDC', 'ETH-USDC']
+export const MARKETS = ['SOL-USDC', 'BTC-USDC', 'ETH-USDC', 'JUP-USDC']
 export type MarketId = typeof MARKETS[number] | string
 export type RightPanel = 'orderbook' | 'trades' | 'polymarket'
 export type BottomPanel = 'positions' | 'orders' | 'history'
@@ -32,8 +32,9 @@ export function TradingTerminal({ defaultMarket = 'SOL-USDC' }: Props) {
 
   const PAIRS = [
     { symbol: 'SOL-USDC', price: ticker?.market_id === 'SOL-USDC' ? ticker.price : 145.83, change: 4.72 },
-    { symbol: 'BTC-USDC', price: 64312.5, change: -0.23 },
-    { symbol: 'ETH-USDC', price: 3312.4, change: -0.65 }
+    { symbol: 'BTC-USDC', price: ticker?.market_id === 'BTC-USDC' ? ticker.price : 64312.5, change: -0.23 },
+    { symbol: 'ETH-USDC', price: ticker?.market_id === 'ETH-USDC' ? ticker.price : 3312.4, change: -0.65 },
+    { symbol: 'JUP-USDC', price: ticker?.market_id === 'JUP-USDC' ? ticker.price : 1.12, change: 2.45 }
   ]
 
   const pxColor = ticker
@@ -156,10 +157,10 @@ export function TradingTerminal({ defaultMarket = 'SOL-USDC' }: Props) {
 
         {/* RIGHT PANELS */}
         <div className="flex w-[560px] shrink-0">
-          {/* BOOK / TRADES / POLY */}
+          {/* BOOK / TRADES */}
           <div className="w-[300px] border-r border-[var(--bd)] flex flex-col bg-[var(--bg1)]">
             <div className="flex border-b border-[var(--bd)] shrink-0 bg-[var(--bg2)]/50">
-              {([['orderbook','Order Book'],['trades','Recent Trades'],['polymarket','Polymarket']] as const).map(([k,l]) => (
+              {([['orderbook','Order Book'],['trades','Recent Trades']] as const).map(([k,l]) => (
                 <button key={k} onClick={() => setRightPanel(k as RightPanel)}
                   className={`flex-1 py-3 px-2 text-[10px] font-bold uppercase tracking-widest border-b-2 transition-all whitespace-nowrap ${
                     rightPanel === k ? 'border-[var(--blue)] text-[var(--tx)] bg-[var(--bg2)]' : 'border-transparent text-[var(--tx3)] hover:text-[var(--tx2)]'
@@ -171,11 +172,11 @@ export function TradingTerminal({ defaultMarket = 'SOL-USDC' }: Props) {
             <div className="flex-1 overflow-hidden">
               {rightPanel === 'orderbook'  && <OrderBook marketId={activeMarket} />}
               {rightPanel === 'trades'     && <TradesPanel marketId={activeMarket} />}
-              {rightPanel === 'polymarket' && (
+              {/* {rightPanel === 'polymarket' && (
                 <div className="h-full overflow-y-auto no-scrollbar">
                   <PolymarketPanel hideHeader />
                 </div>
-              )}
+              )} */}
             </div>
           </div>
 
