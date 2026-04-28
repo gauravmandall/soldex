@@ -1,10 +1,13 @@
 use anchor_lang::prelude::*;
 
+pub const POSITION_SEED: &[u8] = b"position";
+pub const FUNDING_INTERVAL_SECS: i64 = 8 * 3600;
+
 // ─── Market State ─────────────────────────────────────────────────────────────
 
 /// Global market state PDA: seeds = [b"market", market_id]
 #[account]
-#[derive(Default)]
+// #[derive(Default)]
 pub struct MarketState {
     /// e.g. "SOL-PERP" as bytes[16]
     pub market_id: [u8; 16],
@@ -44,9 +47,41 @@ pub struct MarketState {
     pub is_active: bool,
     /// PDA bump
     pub bump: u8,
+    ///
+    pub vault_bump: u8,
     /// Reserved for future use
     pub _reserved: [u8; 64],
 }
+
+
+impl Default for MarketState {
+    fn default() -> Self {
+        Self {
+            market_id:                [0u8; 16],
+            admin:                    Pubkey::default(),
+            quote_mint:               Pubkey::default(),
+            vault:                    Pubkey::default(),
+            price_feed:               Pubkey::default(),
+            tick_size_bps:            0,
+            lot_size:                 0,
+            max_leverage_bps:         0,
+            maker_fee_bps:            0,
+            taker_fee_bps:            0,
+            initial_margin_bps:       0,
+            maintenance_margin_bps:   0,
+            long_open_interest:       0,
+            short_open_interest:      0,
+            cumulative_funding_long:  0,
+            cumulative_funding_short: 0,
+            last_funding_ts:          0,
+            is_active:                false,
+            bump:                     0,
+             vault_bump:               0,
+            _reserved:                [0u8; 64],
+        }
+    }
+}
+
 
 impl MarketState {
     pub const LEN: usize = 8    // discriminator
@@ -69,6 +104,7 @@ impl MarketState {
         + 8     // last_funding_ts
         + 1     // is_active
         + 1     // bump
+        + 1     // vault_bump
         + 64;   // reserved
 }
 
@@ -116,12 +152,15 @@ pub struct Position {
     pub opened_at: i64,
     /// Is this position open
     pub is_open: bool,
+    pub is_delegated: bool,
+    pub delegated_at: i64,
+    pub last_update_ts: i64,
     pub bump: u8,
     pub _reserved: [u8; 32],
 }
 
 impl Position {
-    pub const LEN: usize = 8 + 16 + 32 + 1 + 8 + 8 + 8 + 8 + 16 + 8 + 1 + 1 + 32;
+    pub const LEN: usize = 8 + 16 + 32 + 1 + 8 + 8 + 8 + 8 + 16 + 8 + 1 + 1 + 8 + 8 + 1 + 32;
 
     /// Calculate unrealized PnL given current mark price
     pub fn unrealized_pnl(&self, mark_price: u64) -> i64 {

@@ -13,9 +13,14 @@ no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
 default = []
+idl-build = ["anchor-lang/idl-build","anchor-spl/idl-build"]
+custom-heap = []  
+custom-panic = []
+anchor-debug = []
+
 
 [dependencies]
-anchor-lang = { version = "0.30", features = ["init-if-needed"] }
-anchor-spl = { version = "0.30", features = ["token", "associated_token"] }
-
+anchor-lang = { version = "0.32.1", features = ["init-if-needed"] }
+anchor-spl = { version = "0.32.1", features = ["token", "associated_token"] }
+ephemeral-rollups-sdk = { version = "0.11.0", features = ["anchor", "access-control"] }
 
