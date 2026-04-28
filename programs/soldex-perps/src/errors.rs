@@ -40,4 +40,22 @@ pub enum SoldexError {
 
     #[msg("Withdrawal would violate margin requirements")]
     WithdrawalMarginViolation,
+
+    // ── Added for MagicBlock delegation ──────────────────────────────────────
+    #[msg("Position is already delegated to the ephemeral rollup")]
+    AlreadyDelegated,
+
+    #[msg("No open position found for this account")]
+    PositionNotFound,
+
+    #[msg("PDA seeds do not match — invalid account derivation")]
+    InvalidSeeds,
+
+        // ── Added for MagicBlock undelegation ─────────────────────────────────────
+    #[msg("Position is not delegated to the ephemeral rollup")]
+    NotDelegated,
+
+    #[msg("Position still has open size — close before undelegating")]
+    PositionNotFlat,
+
 }
