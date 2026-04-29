@@ -26,6 +26,12 @@ target/
 
 # Project specific
 metsumi.db*
+
+# Build tools
+.anchor/
 .turbo
 
-.anchor/
+# Secrets
+engine/keeper.json
+
+

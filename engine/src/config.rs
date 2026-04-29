@@ -21,6 +21,16 @@ pub struct EngineConfig {
     pub max_position_usd: f64,
     /// Max leverage
     pub max_leverage: f64,
+
+    /// MagicBlock ER RPC URL
+    pub er_rpc_url: String,
+    /// Keeper keypair path (for liquidation / funding bot)
+    pub keeper_keypair_path: String,
+    /// Funding interval (seconds)
+    pub funding_interval_secs: u64,
+    /// Liquidation scan interval (seconds)
+    pub liquidation_scan_interval_secs: u64,
+    pub er_ws_url: String,
 }
 
 impl EngineConfig {
@@ -38,13 +48,26 @@ impl EngineConfig {
                 .unwrap_or_else(|_| "https://clob.polymarket.com".into()),
             polymarket_ws_url: std::env::var("POLYMARKET_WS_URL")
                 .unwrap_or_else(|_| "wss://ws-subscriptions-clob.polymarket.com/ws/market".into()),
-            wallet_encryption_key: std::env::var("WALLET_ENCRYPTION_KEY")
-                .unwrap_or_else(|_| "0000000000000000000000000000000000000000000000000000000000000000".into()),
+            wallet_encryption_key: std::env::var("WALLET_ENCRYPTION_KEY").unwrap_or_else(|_| {
+                "0000000000000000000000000000000000000000000000000000000000000000".into()
+            }),
             max_position_usd: std::env::var("MAX_POSITION_USD")
                 .unwrap_or_else(|_| "10000".into())
                 .parse()?,
             max_leverage: std::env::var("MAX_LEVERAGE")
                 .unwrap_or_else(|_| "20".into())
+                .parse()?,
+            er_rpc_url: std::env::var("ER_RPC_URL")
+                .unwrap_or_else(|_| "https://devnet.magicblock.app".into()),
+            er_ws_url: std::env::var("ER_WS_URL")
+                .unwrap_or_else(|_| "wss://devnet.magicblock.app".into()),
+            keeper_keypair_path: std::env::var("KEEPER_KEYPAIR_PATH")
+                .unwrap_or_else(|_| "./keeper.json".into()),
+            funding_interval_secs: std::env::var("FUNDING_INTERVAL_SECS")
+                .unwrap_or_else(|_| "60".into())
+                .parse()?,
+            liquidation_scan_interval_secs: std::env::var("LIQ_SCAN_INTERVAL_SECS")
+                .unwrap_or_else(|_| "5".into())
                 .parse()?,
         })
     }

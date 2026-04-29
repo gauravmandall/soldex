@@ -13,23 +13,29 @@ use tokio::sync::broadcast;
 use tower_http::cors::{Any, CorsLayer};
 use tracing::{error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use solana_sdk::signature::read_keypair_file;
+use tracing::warn;
 
 mod config;
-mod orderbook;
 mod feeds;
+mod jupiter_perps;
+mod magicblock;
+mod orderbook;
 mod perps;
 mod polymarket;
 mod risk;
+mod utils;
 mod wallet;
 mod ws;
-mod jupiter_perps;
 
+use crate::utils::BlockhashCache;
+use crate::ws::ServerMessage;
 use config::EngineConfig;
 use orderbook::OrderbookEngine;
 use perps::PerpsEngine;
 use polymarket::PolymarketBridge;
 use risk::RiskEngine;
-use crate::ws::ServerMessage;
+use solana_sdk::hash::Hash;
 
 /// Shared engine state across all WebSocket connections
 #[derive(Clone)]
@@ -40,6 +46,7 @@ pub struct AppState {
     pub polymarket: Arc<PolymarketBridge>,
     pub risk: Arc<RiskEngine>,
     pub broadcast_tx: broadcast::Sender<ServerMessage>,
+    pub blockhash_cache: Arc<BlockhashCache>,
 }
 
 #[tokio::main]
@@ -64,6 +71,57 @@ async fn main() -> Result<()> {
     let perps = Arc::new(PerpsEngine::new(config.clone()).await?);
     let polymarket = Arc::new(PolymarketBridge::new(config.clone()));
     let risk = Arc::new(RiskEngine::new());
+    let initial_hash = Hash::default(); // temporary
+    let blockhash_cache = Arc::new(BlockhashCache::new(initial_hash));
+    // ── MagicBlock ER setup ───────────────────────────────────────────────────
+    let keeper_keypair = Arc::new(
+        solana_sdk::signature::read_keypair_file(&config.keeper_keypair_path).unwrap_or_else(
+            |_| {
+                // No keeper keypair found — generate ephemeral one for dev
+                warn!(
+                    "keeper keypair not found at {} — using ephemeral keypair",
+                    config.keeper_keypair_path
+                );
+                solana_sdk::signature::Keypair::new()
+            },
+        ),
+    );
+
+    let er_session = magicblock::ErSession::new(
+        &config.er_rpc_url,
+          &config.er_ws_url,
+        &config.solana_rpc_url,
+        keeper_keypair.clone(),
+    )
+    .await?;
+
+    let er_tx_builder = Arc::new(magicblock::ErTxBuilder::new(
+        &config,
+        keeper_keypair.clone(),
+    ));
+
+    let keeper_bot = Arc::new(magicblock::KeeperBot::new(
+        er_session.clone(),
+        er_tx_builder.clone(),
+        blockhash_cache.clone(),
+        magicblock::keeper::KeeperConfig {
+            funding_interval_secs: config.funding_interval_secs,
+            liquidation_scan_interval_secs: config.liquidation_scan_interval_secs,
+            min_margin_ratio_bps: 500,
+        },
+    ));
+
+    // Spawn keeper bot — runs funding + liquidation loops in background
+    tokio::spawn({
+        let bot = keeper_bot.clone();
+        async move { bot.run().await }
+    });
+
+    info!(
+        "✅ MagicBlock ER session connected to {}",
+        config.er_rpc_url
+    );
+    // ─────────────────────────────────────────────────────────────────────────
 
     let state = AppState {
         config: config.clone(),
@@ -72,9 +130,33 @@ async fn main() -> Result<()> {
         polymarket: polymarket.clone(),
         risk: risk.clone(),
         broadcast_tx: broadcast_tx.clone(),
+        blockhash_cache: blockhash_cache.clone(),
     };
 
     // Spawn Jupiter Perps feed
+
+    let cache = blockhash_cache.clone();
+    let perps_clone = perps.clone();
+
+    tokio::spawn(async move {
+        loop {
+            // Use your existing RPC (PerpsEngine already has RpcClient)
+            let hash = perps_clone.get_latest_blockhash().await;
+
+            match hash {
+                Ok(h) => {
+                    cache.set(h).await;
+                }
+                Err(e) => {
+                    error!("Blockhash fetch failed: {}", e);
+                }
+            }
+
+            tokio::time::sleep(std::time::Duration::from_millis(400)).await;
+        }
+    });
+
+    // Spawn Hyperliquid feed
     let tx_clone = broadcast_tx.clone();
     tokio::spawn(async move {
         if let Err(e) = jupiter_perps::start_jupiter_feed(tx_clone).await {
@@ -107,6 +189,12 @@ async fn main() -> Result<()> {
         }
     });
 
+    let pm_bridge = polymarket.clone();
+    let tx_clone = broadcast_tx.clone();
+    // TODO: start_polymarket_ws_feed — needs implementation in polymarket/mod.rs
+    drop(pm_bridge);
+    drop(tx_clone);
+
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods(Any)
@@ -131,10 +219,7 @@ async fn health_handler() -> impl IntoResponse {
     axum::Json(serde_json::json!({ "status": "ok", "engine": "soldex-v0.1" }))
 }
 
-async fn ws_handler(
-    ws: WebSocketUpgrade,
-    State(state): State<AppState>,
-) -> impl IntoResponse {
+async fn ws_handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> impl IntoResponse {
     ws.on_upgrade(|socket| handle_socket(socket, state))
 }
 
