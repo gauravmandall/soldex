@@ -85,6 +85,7 @@ pub enum ServerMessage {
 
     /// Real-time Polymarket updates from CLOB WS
     PolymarketUpdate { update: PolyWsMessage },
+    // PolymarketUpdate { update: PolyWsMessage }, // TODO: needs PolyWsMessage in polymarket/mod.rs
 
     /// Order acknowledged
     OrderAck {

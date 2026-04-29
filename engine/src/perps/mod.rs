@@ -14,6 +14,7 @@ use solana_sdk::{
     transaction::Transaction,
 };
 use std::{collections::HashMap, str::FromStr, sync::Arc};
+use solana_sdk::hash::Hash;
 use tokio::sync::{broadcast, RwLock};
 use tracing::{error, info};
 
@@ -325,4 +326,9 @@ impl PerpsEngine {
         // Placeholder: return empty bytes — replace with real IX
         Ok(vec![])
     }
+
+    pub async fn get_latest_blockhash(&self) -> Result<Hash> {
+    let hash = self.rpc.get_latest_blockhash().await?;
+    Ok(hash)
+     }
 }
