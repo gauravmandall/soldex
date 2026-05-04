@@ -135,6 +135,7 @@ interface MarketStore {
 
   setActiveMarket: (id: string) => void
   setSelectedPolyMarket: (id: string | null) => void
+  setSelectedJupiterMarket: (id: string | null) => void
   handleEngineMessage: (msg: unknown) => void
   addPosition: (p: Position) => void
   removePosition: (marketId: string) => void

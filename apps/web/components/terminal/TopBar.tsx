@@ -39,25 +39,28 @@ export function TopBar({ connected }: { connected: boolean }) {
       </div>
 
       <nav className="flex items-center h-full ml-4 gap-1">
-        {nav.map(({ href, label, icon: Icon, badge, alert }) => (
-          <Link key={href} href={href}
-            className={`px-4 h-full flex items-center gap-2 text-[10px] font-bold tracking-widest transition-all duration-150 border-b-2 ${
-              path === href 
-                ? 'text-[var(--green)] border-[var(--green)] bg-[var(--bg2)]/50' 
-                : 'text-[var(--tx2)] border-transparent hover:text-[var(--tx)] hover:bg-[var(--bg2)]/30'
-            }`}>
-            <Icon className="w-3.5 h-3.5" />
-            {label}
-            {badge && (
-              <span className="bg-[var(--blue)]/20 text-[var(--blue)] text-[9px] px-1.5 py-0.5 rounded-[2px] font-bold ml-1">
-                {badge}
-              </span>
-            )}
-            {alert && (
-              <AlertCircle className="w-3 h-3 text-[var(--amber)] animate-pulse" />
-            )}
-          </Link>
-        ))}
+        {nav.map(({ href, label, icon: Icon, badge, alert }) => {
+          const active = href === '/' ? path === '/' : path.startsWith(href)
+          return (
+            <Link key={href} href={href}
+              className={`px-4 h-full flex items-center gap-2 text-[10px] font-bold tracking-widest transition-all duration-150 border-b-2 ${
+                active 
+                  ? 'text-[var(--green)] border-[var(--green)] bg-[var(--bg2)]/50' 
+                  : 'text-[var(--tx2)] border-transparent hover:text-[var(--tx)] hover:bg-[var(--bg2)]/30'
+              }`}>
+              <Icon className="w-3.5 h-3.5" />
+              {label}
+              {badge && (
+                <span className="bg-[var(--blue)]/20 text-[var(--blue)] text-[9px] px-1.5 py-0.5 rounded-[2px] font-bold ml-1">
+                  {badge}
+                </span>
+              )}
+              {alert && (
+                <AlertCircle className="w-3 h-3 text-[var(--amber)] animate-pulse" />
+              )}
+            </Link>
+          )
+        })}
       </nav>
 
       <div className="ml-auto flex items-center gap-6">

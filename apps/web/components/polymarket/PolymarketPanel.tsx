@@ -6,6 +6,7 @@ import { Search, Globe, LayoutGrid, Activity, Zap } from 'lucide-react'
 import { PolyMarketCard } from './PolyMarketCard'
 import { JupiterMarketCard } from './JupiterMarketCard'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useRouter } from 'next/navigation'
 
 interface Props {
   initialCategory?: string
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function PolymarketPanel({ initialCategory = 'all', hideHeader = false, searchOverride = '' }: Props) {
+  const router = useRouter()
   const { 
     polyOpportunities, 
     jupiterOpportunities, 
@@ -74,8 +76,7 @@ export function PolymarketPanel({ initialCategory = 'all', hideHeader = false, s
                 market={market}
                 active={selectedPolyMarketId === market.market_id}
                 onClick={() => {
-                   setSelectedJupiterMarket(null)
-                   setSelectedPolyMarket(market.market_id)
+                   router.push(`/prediction/${market.market_id}`)
                 }}
               />
             ) : (
@@ -84,8 +85,7 @@ export function PolymarketPanel({ initialCategory = 'all', hideHeader = false, s
                 market={market}
                 active={selectedJupiterMarketId === market.market_id}
                 onClick={() => {
-                   setSelectedPolyMarket(null)
-                   setSelectedJupiterMarket(market.market_id)
+                   router.push(`/prediction/${market.market_id}`)
                 }}
               />
             )
