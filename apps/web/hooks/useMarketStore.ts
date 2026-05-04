@@ -72,6 +72,21 @@ export interface PolyOpportunity {
   source: string
 }
 
+export interface JupiterOpportunity {
+  event_id: string
+  market_id: string
+  title: string
+  image_url: string | null
+  outcomes: string[]
+  outcome_prices: number[]
+  clob_token_ids: string[]
+  volume_24h: number
+  volume_usd: number
+  category: string
+  is_live: boolean
+  source: string
+}
+
 export interface OpenOrder {
   id: number
   market_id: string
@@ -111,6 +126,8 @@ interface MarketStore {
   openOrders: OpenOrder[]
   polyOpportunities: PolyOpportunity[]
   selectedPolyMarketId: string | null
+  jupiterOpportunities: JupiterOpportunity[]
+  selectedJupiterMarketId: string | null
   polyOrderbooks: Record<string, PolyOrderbook> // key: asset_id or market_id
   polyTrades: Record<string, PolyTrade[]>
   polyMarketHistory: { time: number; price: number }[]
@@ -134,6 +151,8 @@ export const useMarketStore = create<MarketStore>()(
     openOrders: [],
     polyOpportunities: [],
     selectedPolyMarketId: null,
+    jupiterOpportunities: [],
+    selectedJupiterMarketId: null,
     polyOrderbooks: {},
     polyTrades: {},
     polyMarketHistory: [],
@@ -142,8 +161,11 @@ export const useMarketStore = create<MarketStore>()(
     setActiveMarket: (id) => set((s) => { s.activeMarket = id }),
     setSelectedPolyMarket: (id) => set((s) => { 
       s.selectedPolyMarketId = id;
-      // When a new market is selected, we'll fetch its history
-      // In a real app, this would trigger an effect or another action
+      if (id) s.selectedJupiterMarketId = null;
+    }),
+    setSelectedJupiterMarket: (id) => set((s) => { 
+      s.selectedJupiterMarketId = id;
+      if (id) s.selectedPolyMarketId = null;
     }),
 
     handleEngineMessage: (msg: any) => {
@@ -195,6 +217,10 @@ export const useMarketStore = create<MarketStore>()(
 
           case 'polymarket_opportunities':
             s.polyOpportunities = msg.opportunities
+            break
+
+          case 'jupiter_prediction_opportunities':
+            s.jupiterOpportunities = msg.opportunities
             break
 
           case 'polymarket_update': {

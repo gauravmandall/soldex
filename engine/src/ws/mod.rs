@@ -2,6 +2,7 @@ use crate::{
     orderbook::{Fill, Order, OrderbookSnapshot, OrderType, Side},
     perps::{MarketTicker, PositionSide},
     polymarket::{PolyOpportunity, PolyWsMessage},
+    jupiter_prediction::JupiterOpportunity,
     AppState,
 };
 use axum::extract::ws::{Message, WebSocket};
@@ -61,7 +62,19 @@ pub enum ClientMessage {
 
     /// Get Polymarket opportunities
     GetPolyOpportunities,
-
+    /// Get Jupiter Prediction opportunities
+    GetJupiterOpportunities,
+    /// Place a Jupiter Prediction order
+    JupiterPredictionOrder {
+        market_id: String,
+        outcome_index: usize,
+        size_usdc: f64,
+        owner_pubkey: String,
+    },
+    /// Submit a signed transaction
+    SubmitTransaction {
+        tx_base64: String,
+    },
     /// Ping
     Ping,
 }
@@ -82,7 +95,8 @@ pub enum ServerMessage {
 
     /// Polymarket opportunities
     PolymarketOpportunities { opportunities: Vec<PolyOpportunity> },
-
+    /// Jupiter Prediction opportunities
+    JupiterPredictionOpportunities { opportunities: Vec<JupiterOpportunity> },
     /// Real-time Polymarket updates from CLOB WS
     PolymarketUpdate { update: PolyWsMessage },
     // PolymarketUpdate { update: PolyWsMessage }, // TODO: needs PolyWsMessage in polymarket/mod.rs
@@ -239,6 +253,22 @@ async fn handle_client_message(msg: ClientMessage, state: &AppState) {
             }
         }
 
+        ClientMessage::GetJupiterOpportunities => {
+            match state.jupiter_prediction.discover_opportunities().await {
+                Ok(opps) => {
+                    let _ = state
+                        .broadcast_tx
+                        .send(ServerMessage::JupiterPredictionOpportunities { opportunities: opps });
+                }
+                Err(e) => {
+                    let _ = state.broadcast_tx.send(ServerMessage::Error {
+                        code: "JUPITER_PRED_ERROR".into(),
+                        message: e.to_string(),
+                    });
+                }
+            }
+        }
+
         ClientMessage::PolymarketOrder {
             token_id,
             side,
@@ -310,6 +340,79 @@ async fn handle_client_message(msg: ClientMessage, state: &AppState) {
                 Err(e) => {
                     let _ = state.broadcast_tx.send(ServerMessage::Error {
                         code: "TX_BUILD_ERROR".into(),
+                        message: e.to_string(),
+                    });
+                }
+            }
+        }
+
+        ClientMessage::JupiterPredictionOrder {
+            market_id,
+            outcome_index,
+            size_usdc,
+            owner_pubkey,
+        } => {
+            match state
+                .jupiter_prediction
+                .execute_order(&market_id, outcome_index, size_usdc, &owner_pubkey)
+                .await
+            {
+                Ok(tx_bytes) => {
+                    use base64::{engine::general_purpose, Engine as _};
+                    let tx_base64 = general_purpose::STANDARD.encode(&tx_bytes);
+                    let _ = state.broadcast_tx.send(ServerMessage::UnsignedTx {
+                        request_id: format!("jup_{}", uuid_v4()),
+                        tx_base64,
+                        description: format!("Jupiter Prediction: Buy Outcome #{} on {}", outcome_index, market_id),
+                    });
+                }
+                Err(e) => {
+                    let _ = state.broadcast_tx.send(ServerMessage::Error {
+                        code: "JUP_EXEC_ERROR".into(),
+                        message: e.to_string(),
+                    });
+                }
+            }
+        }
+
+        ClientMessage::SubmitTransaction { tx_base64 } => {
+            use solana_client::rpc_config::RpcSendTransactionConfig;
+            use solana_sdk::transaction::VersionedTransaction;
+            use base64::{engine::general_purpose, Engine as _};
+
+            let tx_bytes = match general_purpose::STANDARD.decode(&tx_base64) {
+                Ok(b) => b,
+                Err(e) => {
+                    let _ = state.broadcast_tx.send(ServerMessage::Error {
+                        code: "INVALID_TX".into(),
+                        message: e.to_string(),
+                    });
+                    return;
+                }
+            };
+
+            let rpc = state.perps.get_rpc_client();
+            let tx: VersionedTransaction = match bincode::deserialize(&tx_bytes) {
+                Ok(t) => t,
+                Err(e) => {
+                    error!("Failed to deserialize transaction: {}", e);
+                    return;
+                }
+            };
+
+            match rpc.send_transaction(&tx).await {
+                Ok(sig) => {
+                    info!("Submitted transaction: {}", sig);
+                    let _ = state.broadcast_tx.send(ServerMessage::OrderAck {
+                        client_order_id: sig.to_string(),
+                        order_id: 0,
+                        status: "submitted".into(),
+                    });
+                }
+                Err(e) => {
+                    error!("Failed to submit transaction: {}", e);
+                    let _ = state.broadcast_tx.send(ServerMessage::Error {
+                        code: "RPC_ERROR".into(),
                         message: e.to_string(),
                     });
                 }

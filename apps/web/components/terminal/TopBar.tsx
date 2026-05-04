@@ -15,7 +15,7 @@ export function TopBar({ connected }: { connected: boolean }) {
   const nav = [
     { href: '/',           label: 'PERPS', icon: Cpu },
     { 
-      href: '/polymarket', 
+      href: '/prediction', 
       label: 'PREDICTIONS',
       icon: Globe,
       badge: polyOpportunities.length > 0 ? polyOpportunities.length : null

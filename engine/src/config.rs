@@ -15,6 +15,8 @@ pub struct EngineConfig {
     pub polymarket_api_url: String,
     /// Polymarket WebSocket
     pub polymarket_ws_url: String,
+    /// Jupiter Prediction API
+    pub jupiter_prediction_api_url: String,
     /// Encryption key for stored keypairs (hex-encoded 32 bytes)
     pub wallet_encryption_key: String,
     /// Max position size in USD
@@ -48,6 +50,8 @@ impl EngineConfig {
                 .unwrap_or_else(|_| "https://clob.polymarket.com".into()),
             polymarket_ws_url: std::env::var("POLYMARKET_WS_URL")
                 .unwrap_or_else(|_| "wss://ws-subscriptions-clob.polymarket.com/ws/market".into()),
+            jupiter_prediction_api_url: std::env::var("JUPITER_PREDICTION_API_URL")
+                .unwrap_or_else(|_| "https://prediction-market-api.jup.ag".into()),
             wallet_encryption_key: std::env::var("WALLET_ENCRYPTION_KEY").unwrap_or_else(|_| {
                 "0000000000000000000000000000000000000000000000000000000000000000".into()
             }),

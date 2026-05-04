@@ -328,7 +328,11 @@ impl PerpsEngine {
     }
 
     pub async fn get_latest_blockhash(&self) -> Result<Hash> {
-    let hash = self.rpc.get_latest_blockhash().await?;
-    Ok(hash)
-     }
+        let hash = self.rpc.get_latest_blockhash().await?;
+        Ok(hash)
+    }
+
+    pub fn get_rpc_client(&self) -> Arc<RpcClient> {
+        self.rpc.clone()
+    }
 }

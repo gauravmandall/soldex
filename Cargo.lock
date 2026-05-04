@@ -6871,6 +6871,7 @@ dependencies = [
  "anyhow",
  "axum",
  "base64 0.21.7",
+ "bincode",
  "borsh 0.10.4",
  "bs58",
  "chrono",

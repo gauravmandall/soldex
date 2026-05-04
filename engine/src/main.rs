@@ -19,6 +19,7 @@ use tracing::warn;
 mod config;
 mod feeds;
 mod jupiter_perps;
+mod jupiter_prediction;
 mod magicblock;
 mod orderbook;
 mod perps;
@@ -33,6 +34,7 @@ use crate::ws::ServerMessage;
 use config::EngineConfig;
 use orderbook::OrderbookEngine;
 use perps::PerpsEngine;
+use jupiter_prediction::JupiterPredictionBridge;
 use polymarket::PolymarketBridge;
 use risk::RiskEngine;
 use solana_sdk::hash::Hash;
@@ -44,6 +46,7 @@ pub struct AppState {
     pub orderbook: Arc<OrderbookEngine>,
     pub perps: Arc<PerpsEngine>,
     pub polymarket: Arc<PolymarketBridge>,
+    pub jupiter_prediction: Arc<JupiterPredictionBridge>,
     pub risk: Arc<RiskEngine>,
     pub broadcast_tx: broadcast::Sender<ServerMessage>,
     pub blockhash_cache: Arc<BlockhashCache>,
@@ -70,6 +73,7 @@ async fn main() -> Result<()> {
     let orderbook = Arc::new(OrderbookEngine::new(config.clone()));
     let perps = Arc::new(PerpsEngine::new(config.clone()).await?);
     let polymarket = Arc::new(PolymarketBridge::new(config.clone()));
+    let jupiter_prediction = Arc::new(JupiterPredictionBridge::new(config.clone()));
     let risk = Arc::new(RiskEngine::new());
     let initial_hash = Hash::default(); // temporary
     let blockhash_cache = Arc::new(BlockhashCache::new(initial_hash));
@@ -128,6 +132,7 @@ async fn main() -> Result<()> {
         orderbook: orderbook.clone(),
         perps: perps.clone(),
         polymarket: polymarket.clone(),
+        jupiter_prediction: jupiter_prediction.clone(),
         risk: risk.clone(),
         broadcast_tx: broadcast_tx.clone(),
         blockhash_cache: blockhash_cache.clone(),
@@ -186,6 +191,17 @@ async fn main() -> Result<()> {
         use crate::polymarket::start_polymarket_ws_feed;
         if let Err(e) = start_polymarket_ws_feed(pm_bridge, tx_clone).await {
             error!("Polymarket WS feed error: {e}");
+        }
+    });
+
+    // Spawn Jupiter Prediction feed
+    println!(">>> DEBUG: SPAWNING JUPITER PREDICTION FEED");
+    let jp_bridge = jupiter_prediction.clone();
+    let tx_clone = broadcast_tx.clone();
+    tokio::spawn(async move {
+        println!(">>> DEBUG: INSIDE tokio::spawn FOR JUPITER PREDICTION");
+        if let Err(e) = feeds::start_jupiter_prediction_feed(jp_bridge, tx_clone).await {
+            error!("Jupiter Prediction opportunity feed error: {e}");
         }
     });
 

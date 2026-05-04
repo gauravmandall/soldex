@@ -3,7 +3,7 @@ import React from 'react'
 import { PolyOpportunity } from '@/hooks/useMarketStore'
 import { formatVolume, formatUsd } from '@/lib/format'
 import { motion } from 'framer-motion'
-import { TrendingUp, ChevronRight } from 'lucide-react'
+import { TrendingUp, ChevronRight, Activity } from 'lucide-react'
 
 interface Props {
   market: PolyOpportunity
@@ -12,43 +12,66 @@ interface Props {
 }
 
 export function PolyMarketCard({ market, onClick, active = false }: Props) {
-  const yesProb = Math.round(market.yes_price * 100)
-  const noProb = 100 - yesProb
+  const yesPrice = (market.yes_price * 100).toFixed(0)
+  const noPrice = (market.no_price * 100).toFixed(0)
 
   return (
-    <div 
+    <motion.div 
+      layout
       onClick={onClick}
-      className={`px-4 py-3 border-b border-[var(--bd)] cursor-pointer transition-all flex items-center justify-between font-mono group ${
-        active ? 'bg-[var(--bg2)] border-l-2 border-l-[var(--amber)]' : 'hover:bg-[var(--bg1)]'
+      className={`p-5 rounded-xl border transition-all cursor-pointer group flex flex-col gap-4 ${
+        active 
+          ? 'bg-[#1e2634] border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.1)]' 
+          : 'bg-[#0d1117] border-[#1e2634] hover:border-[#3b82f6]/40 hover:bg-[#111827]'
       }`}
     >
-      <div className="flex flex-col gap-1 flex-1 min-w-0 pr-8">
-        <h3 className="text-[12px] font-bold text-[var(--tx)] truncate group-hover:text-[var(--amber)] transition-colors uppercase tracking-tight">
-          {market.question}
-        </h3>
-        <div className="flex items-center gap-4 text-[10px] font-medium uppercase tracking-tight">
-           <span className="px-1.5 py-0.5 bg-[var(--bd2)] text-[var(--tx2)] rounded-[2px]">{market.category}</span>
-           <span className="text-[var(--tx3)]">VOL: <span className="text-[var(--tx)]">{formatVolume(market.volume_24h)}</span></span>
-           <span className="text-[var(--tx3)]">LIQ: <span className="text-[var(--tx)]">{formatUsd(market.liquidity)}</span></span>
-        </div>
+      <div className="flex items-center justify-between">
+         <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+               <Activity className="w-4 h-4 text-blue-500" />
+            </div>
+            <span className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest">{market.category}</span>
+         </div>
+         <TrendingUp className="w-3.5 h-3.5 text-[#4a5568] group-hover:text-blue-500 transition-colors" />
       </div>
 
-      <div className="flex items-center gap-6 shrink-0">
-        {/* Probability Column */}
-        <div className="flex flex-col items-end gap-1 w-[80px]">
-           <div className="flex justify-between w-full text-[11px] font-bold">
-              <span className="text-[var(--green)]">{yesProb}¢</span>
-              <span className="text-[var(--red)]">{noProb}¢</span>
+      <div className="flex flex-col gap-3">
+        <h3 className="text-[14px] font-bold text-white leading-snug line-clamp-2 h-10 group-hover:text-blue-400 transition-colors">
+          {market.question}
+        </h3>
+        
+        <div className="flex items-center justify-between text-[11px] font-bold mt-2">
+           <div className="flex flex-col">
+              <span className="text-[#4a5568] uppercase text-[9px] tracking-tighter">Volume 24H</span>
+              <span className="text-white">{formatVolume(market.volume_24h)}</span>
            </div>
-           <div className="w-full h-[3px] bg-[var(--bd)] rounded-full overflow-hidden flex">
-              <div 
-                className="h-full bg-[var(--green)] transition-all duration-500" 
-                style={{ width: `${yesProb}%` }} 
-              />
+           <div className="flex items-center gap-4">
+              <div className="flex flex-col items-end">
+                 <span className="text-[#4a5568] uppercase text-[9px] tracking-tighter">Yes</span>
+                 <span className="text-emerald-500">{yesPrice}¢</span>
+              </div>
+              <div className="flex flex-col items-end">
+                 <span className="text-[#4a5568] uppercase text-[9px] tracking-tighter">No</span>
+                 <span className="text-rose-500">{noPrice}¢</span>
+              </div>
            </div>
         </div>
-        <ChevronRight className={`w-4 h-4 transition-all ${active ? 'text-[var(--amber)] translate-x-1' : 'text-[var(--tx3)] group-hover:text-[var(--tx2)]'}`} />
+
+        <div className="flex gap-2 pt-2">
+           <button 
+             onClick={(e) => { e.stopPropagation(); onClick(); }}
+             className="flex-1 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-[11px] font-bold text-emerald-500 hover:bg-emerald-500 hover:text-black transition-all uppercase tracking-widest"
+           >
+             Yes {yesPrice}¢
+           </button>
+           <button 
+             onClick={(e) => { e.stopPropagation(); onClick(); }}
+             className="flex-1 py-2 bg-rose-500/10 border border-rose-500/20 rounded-lg text-[11px] font-bold text-rose-500 hover:bg-rose-500 hover:text-white transition-all uppercase tracking-widest"
+           >
+             No {noPrice}¢
+           </button>
+        </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
