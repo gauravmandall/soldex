@@ -1,14 +1,16 @@
-use anchor_lang::prelude::*;
-use ephemeral_rollups_sdk::anchor::delegate;
-use crate::state::*;
 use crate::errors::SoldexError;
+use crate::state::*;
+use anchor_lang::prelude::*;
+use anchor_spl::token::{Mint, Token, TokenAccount};
+use ephemeral_rollups_sdk::anchor::commit;
+use ephemeral_rollups_sdk::anchor::delegate;
 
 // ─── Seed constants ───────────────────────────────────────────────────────────
 // Single source of truth — every instruction uses these, never raw strings.
 
-pub const MARKET_SEED:   &[u8] = b"market";
-pub const VAULT_SEED:    &[u8] = b"vault";
-pub const MARGIN_SEED:   &[u8] = b"margin";
+pub const MARKET_SEED: &[u8] = b"market";
+pub const VAULT_SEED: &[u8] = b"vault";
+pub const MARGIN_SEED: &[u8] = b"margin";
 pub const POSITION_SEED: &[u8] = b"position";
 
 // Position PDA seed order (canonical, must match everywhere):
@@ -44,23 +46,23 @@ pub struct InitializeMarket<'info> {
     )]
     pub market: Account<'info, MarketState>,
 
-    /// CHECK: USDC mint — stored on market state, not validated here
-    pub quote_mint: AccountInfo<'info>,
+    pub quote_mint: Account<'info, Mint>,
 
-    /// CHECK: vault PDA — holds collateral tokens
     #[account(
-        init,
-        payer = admin,
-        space = 0,
-        seeds = [VAULT_SEED, params.market_id.as_ref()],
-        bump,
-    )]
-    pub vault: AccountInfo<'info>,
+    init,
+    payer = admin,
+    token::mint = quote_mint,
+    token::authority = market,
+    seeds = [VAULT_SEED, params.market_id.as_ref()],
+    bump,
+)]
+    pub vault: Account<'info, TokenAccount>,
 
+    pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 
-// ── Update Market ─────────────────────────────────────────────────────────────
+// ── Update Market ───────────────────────────────────────────────────────────
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct UpdateMarketParams {
@@ -69,6 +71,8 @@ pub struct UpdateMarketParams {
     pub max_leverage_bps: Option<u64>,
     pub maker_fee_bps: Option<u16>,
     pub taker_fee_bps: Option<u16>,
+    pub initial_margin_bps: Option<u16>, // must always stay > maintenance_margin_bps
+    pub maintenance_margin_bps: Option<u16>, // must always stay > 0 and < initial_margin_bps
 }
 
 #[derive(Accounts)]
@@ -113,8 +117,9 @@ pub struct DepositCollateral<'info> {
     pub user_token_account: Account<'info, anchor_spl::token::TokenAccount>,
 
     #[account(
-        mut,
-        constraint = vault.key() == market.vault,
+    mut,
+    constraint = vault.key() == market.vault,
+    constraint = vault.mint == market.quote_mint @ SoldexError::InvalidMint,
     )]
     pub vault: Account<'info, anchor_spl::token::TokenAccount>,
 
@@ -143,8 +148,9 @@ pub struct WithdrawCollateral<'info> {
     pub user_token_account: Account<'info, anchor_spl::token::TokenAccount>,
 
     #[account(
-        mut,
-        constraint = vault.key() == market.vault,
+    mut,
+    constraint = vault.key() == market.vault,
+    constraint = vault.mint == market.quote_mint @ SoldexError::InvalidMint,
     )]
     pub vault: Account<'info, anchor_spl::token::TokenAccount>,
 
@@ -193,9 +199,10 @@ pub struct OpenPosition<'info> {
     )]
     pub position: Account<'info, Position>,
 
-    /// CHECK: Pyth price feed — validated against market.price_feed
+    /// Pyth price feed account — validated against market.price_feed
+    /// CHECK: Pyth price feed — key validated against market.price_feed
     #[account(constraint = price_feed.key() == market.price_feed)]
-    pub price_feed: AccountInfo<'info>,
+    pub price_feed: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
@@ -239,9 +246,10 @@ pub struct ClosePosition<'info> {
     )]
     pub position: Account<'info, Position>,
 
-    /// CHECK: Pyth price feed — validated against market.price_feed
+    /// Pyth price feed account — validated against market.price_feed
+    /// CHECK: Pyth price feed — key validated against market.price_feed
     #[account(constraint = price_feed.key() == market.price_feed)]
-    pub price_feed: AccountInfo<'info>,
+    pub price_feed: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -254,42 +262,47 @@ pub struct ClosePosition<'info> {
 #[derive(Accounts)]
 #[instruction(market_id: [u8; 16], nonce: u8)]
 pub struct DelegatePosition<'info> {
+    /// CHECK: Written manually before CPI; DELeGG takes ownership after
     #[account(
         mut,
         del,
-        // ✓ Canonical seed order: [POSITION_SEED, market_id, owner, nonce]
         seeds = [POSITION_SEED, market_id.as_ref(), owner.key().as_ref(), &[nonce]],
-        bump = position.bump,
-        has_one = owner @ SoldexError::InvalidSeeds,
+        bump,
     )]
-    pub position: Account<'info, Position>,
+    pub position: AccountInfo<'info>,
 
     #[account(mut)]
     pub owner: Signer<'info>,
+
+    /// CHECK: ACL permission program (PER) or system program (ER tests).
+    /// If system program is passed, permission CPI is skipped in handler.
+    pub permission_program: UncheckedAccount<'info>,
+
+    /// CHECK: Permission PDA — only validated and used when permission_program is ACL.
+    /// Not marked mut here — CreatePermissionCpi marks it writable internally via CPI.
+    pub permission: UncheckedAccount<'info>,
 }
-
 // ── Undelegate Position ───────────────────────────────────────────────────────
-
 #[derive(Accounts)]
 #[instruction(market_id: [u8; 16], nonce: u8)]
 pub struct UndelegatePosition<'info> {
+    /// CHECK: owned by delegation program during undelegation
     #[account(
         mut,
-        // ✓ Canonical seed order: [POSITION_SEED, market_id, owner, nonce]
         seeds = [POSITION_SEED, market_id.as_ref(), owner.key().as_ref(), &[nonce]],
-        bump = position.bump,
-        has_one = owner @ SoldexError::InvalidSeeds,
+        bump,
     )]
-    pub position: Account<'info, Position>,
+    pub position: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub owner: Signer<'info>,
 
-    /// CHECK: MagicBlock magic context PDA
-    pub magic_context: AccountInfo<'info>,
+    /// CHECK: Magic program for ephemeral rollup CPI
+    pub magic_program: UncheckedAccount<'info>,
 
-    /// CHECK: MagicBlock magic program
-    pub magic_program: AccountInfo<'info>,
+    /// CHECK: Magic context account — validated by delegation program
+    #[account(mut)]
+    pub magic_context: UncheckedAccount<'info>,
 }
 
 // ── Liquidate ─────────────────────────────────────────────────────────────────
@@ -318,6 +331,11 @@ pub struct Liquidate<'info> {
         constraint = position.is_open @ SoldexError::PositionNotOpen,
     )]
     pub position: Account<'info, Position>,
+
+    /// Pyth price feed account — validated against market.price_feed
+    /// CHECK: Pyth price feed — key validated against market.price_feed
+    #[account(constraint = price_feed.key() == market.price_feed @ SoldexError::Unauthorized)]
+    pub price_feed: UncheckedAccount<'info>,
 }
 
 // ── Settle Funding ────────────────────────────────────────────────────────────
@@ -328,6 +346,11 @@ pub struct SettleFunding<'info> {
 
     #[account(mut)]
     pub market: Account<'info, MarketState>,
+
+    /// Pyth price feed account for mark price
+    /// CHECK: Pyth price feed — key validated against market.price_feed
+    #[account(constraint = price_feed.key() == market.price_feed)]
+    pub price_feed: UncheckedAccount<'info>,
 }
 
 // ── Events ────────────────────────────────────────────────────────────────────
@@ -353,4 +376,21 @@ pub struct PositionClosed {
     pub market_id: [u8; 16],
     pub pnl: i64,
     pub mark_price: u64,
+}
+
+// ── Close Position ER ─────────────────────────────────────────────────────────
+#[derive(Accounts)]
+#[instruction(mark_price: u64, market_id: [u8; 16], nonce: u8)]
+pub struct ClosePositionEr<'info> {
+    /// CHECK: delegated position on ER — manually verified in handler
+    #[account(
+        mut,
+        seeds = [POSITION_SEED, market_id.as_ref(), owner.key().as_ref(), &[nonce]],
+        bump,
+    )]
+    pub position: AccountInfo<'info>,
+     /// On PER: engine keypair signs (enforced by TEE + ACL).
+    /// On ER baseline: user signs (no price validation — test use only).
+    #[account(mut)]
+    pub owner: Signer<'info>,
 }

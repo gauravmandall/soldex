@@ -1,7 +1,11 @@
 pub mod initialize_market;
 pub mod open_position;
 pub mod close_position;
+pub mod liquidate;
+pub mod settle_funding;
+pub mod update_market;
+pub mod deposit_collateral;
+pub mod withdraw_collateral;
 pub mod delegate_position;
 pub mod undelegate_position;
-pub mod update_market;
-pub mod remaining;
+pub mod close_position_er;
