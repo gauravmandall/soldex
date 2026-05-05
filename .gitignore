@@ -33,9 +33,6 @@ metsumi.db*
 # Secrets
 engine/keeper.json
 
-# Environment
-Anchor.toml
-
 # Anchor/Solana
 test-ledger/
 .anchor/
