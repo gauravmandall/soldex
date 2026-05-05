@@ -10,7 +10,8 @@
     "engine:build": "cargo build --release --manifest-path engine/Cargo.toml",
     "anchor:build": "anchor build",
     "anchor:test": "anchor test",
-    "anchor:deploy": "anchor deploy --provider.cluster devnet"
+    "anchor:deploy": "anchor deploy --provider.cluster devnet",
+    "anchor:test:devnet": "ANCHOR_PROVIDER_URL=$HELIUS_RPC ANCHOR_WALLET=~/.config/solana/id.json anchor test --skip-build --skip-deploy --provider.cluster devnet"
   },
   "devDependencies": {
     "@coral-xyz/anchor": "^0.32.0",
