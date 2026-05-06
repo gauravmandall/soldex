@@ -5,3 +5,11 @@
   [assets]
   directory = ".open-next/assets"
   binding = "ASSETS"
+
+[[routes]]
+pattern = "soldex.fi"
+custom_domain = true
+
+[[routes]]
+pattern = "www.soldex.fi"
+custom_domain = true
