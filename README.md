@@ -11,7 +11,8 @@ Execute perps orders and discover Polymarket opportunities with self-custody wal
 | Task | Command |
 |------|---------|
 | **Full Local Start** | `pnpm dev` |
-| **Frontend Only** | `cd apps/web && pnpm dev` |
+| **Landing Page** | `cd apps/landing && pnpm dev` (Port 3002) |
+| **Frontend Only** | `cd apps/web && pnpm dev` (Port 3001) |
 | **Run All Local** | `./run_local.sh` |
 | **Engine (Rust)** | `cd engine && cargo run` |
 | **Build Project** | `pnpm build` |
@@ -23,7 +24,8 @@ Execute perps orders and discover Polymarket opportunities with self-custody wal
 
 ```
 soldex/
-├── apps/web/              # Next.js 14 frontend (TypeScript)
+├── apps/landing/          # Next.js 16 high-perf landing page
+├── apps/web/              # Next.js 16 trading terminal (TypeScript)
 │   ├── app/               # App Router pages
 │   │   ├── page.tsx       # Trading terminal (SOL-PERP default)
 │   │   ├── perps/[market] # Dynamic market pages
