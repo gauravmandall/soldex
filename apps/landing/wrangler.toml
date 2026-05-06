@@ -1,5 +1,5 @@
   main = ".open-next/worker.js"
-  name = "soldex"
+  name = "soldex-landing"
   compatibility_date = "2026-01-20"
   compatibility_flags = ["nodejs_compat"]
   [assets]
