@@ -33,6 +33,10 @@ pub struct EngineConfig {
     /// Liquidation scan interval (seconds)
     pub liquidation_scan_interval_secs: u64,
     pub er_ws_url: String,
+    /// TEE RPC base URL
+    pub tee_rpc_url: String,
+    /// TEE auth base URL
+    pub tee_auth_url: String,
 }
 
 impl EngineConfig {
@@ -65,6 +69,10 @@ impl EngineConfig {
                 .unwrap_or_else(|_| "https://devnet.magicblock.app".into()),
             er_ws_url: std::env::var("ER_WS_URL")
                 .unwrap_or_else(|_| "wss://devnet.magicblock.app".into()),
+            tee_rpc_url: std::env::var("TEE_RPC_URL")
+                .unwrap_or_else(|_| "https://devnet-tee.magicblock.app".into()),
+            tee_auth_url: std::env::var("TEE_AUTH_URL")
+                .unwrap_or_else(|_| "https://devnet-tee.magicblock.app".into()),
             keeper_keypair_path: std::env::var("KEEPER_KEYPAIR_PATH")
                 .unwrap_or_else(|_| "./keeper.json".into()),
             funding_interval_secs: std::env::var("FUNDING_INTERVAL_SECS")

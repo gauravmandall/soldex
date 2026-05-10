@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use tokio::sync::RwLock;
 
 /// Encrypted keypair stored in memory (or persisted to DB)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug ,Clone, Serialize, Deserialize)]
 pub struct EncryptedKeypair {
     pub pubkey: String,          // base58
     pub encrypted_secret: Vec<u8>,
@@ -113,5 +113,79 @@ impl WalletManager {
             .filter(|w| w.rotation_due_at <= now)
             .map(|w| w.pubkey.clone())
             .collect()
+    }
+    /// Import an externally-generated Keypair, encrypt it, and store it.
+    /// Use this once to migrate a plain keeper.json into the wallet store.
+    pub async fn import_keypair(&self, label: &str, keypair: Keypair) -> Result<String> {
+        let pubkey = keypair.pubkey().to_string();
+        let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+        let encrypted_secret = self
+            .cipher
+            .encrypt(&nonce, keypair.to_bytes().as_ref())
+            .map_err(|e| anyhow::anyhow!("encrypt failed: {e}"))?;
+
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64;
+
+        self.wallets.write().await.insert(
+            pubkey.clone(),
+            EncryptedKeypair {
+                pubkey: pubkey.clone(),
+                encrypted_secret,
+                nonce: nonce.to_vec(),
+                created_at: now,
+                rotation_due_at: now + ROTATION_DAYS * MS_PER_DAY,
+                label: label.to_string(),
+            },
+        );
+        Ok(pubkey)
+    }
+
+    /// Decrypt and return an Arc<Keypair> ready for signing.
+    pub async fn get_keypair(&self, pubkey: &str) -> Result<std::sync::Arc<Keypair>> {
+        let wallets = self.wallets.read().await;
+        let ekp = wallets.get(pubkey).context("keypair not found")?;
+        let nonce = Nonce::from_slice(&ekp.nonce);
+        let secret = self
+            .cipher
+            .decrypt(nonce, ekp.encrypted_secret.as_ref())
+            .map_err(|e| anyhow::anyhow!("decrypt failed: {e}"))?;
+        Ok(std::sync::Arc::new(
+            Keypair::from_bytes(&secret).map_err(|e| anyhow::anyhow!("bad keypair bytes: {e}"))?,
+        ))
+    }
+
+    /// Serialize the encrypted keypair to a JSON file.
+    /// File contains only ciphertext — safe to store, never contains raw secret.
+    pub async fn save_keypair_to_file(
+        &self,
+        pubkey: &str,
+        path: &str,
+    ) -> Result<()> {
+        let wallets = self.wallets.read().await;
+        let ekp = wallets.get(pubkey).context("keypair not found")?;
+        let json = serde_json::to_string_pretty(ekp)?;
+        std::fs::write(path, json)?;
+        Ok(())
+    }
+
+    /// Load an encrypted keypair JSON file into the in-memory store.
+    /// Verifies decryption succeeds before inserting — catches wrong key early.
+    pub async fn load_keypair_from_file(&self, path: &str) -> Result<String> {
+        let json = std::fs::read_to_string(path)
+            .with_context(|| format!("failed to read {path}"))?;
+        let ekp: EncryptedKeypair = serde_json::from_str(&json)?;
+
+        // Verify decrypt works before we trust this file
+        let nonce = Nonce::from_slice(&ekp.nonce);
+        self.cipher
+            .decrypt(nonce, ekp.encrypted_secret.as_ref())
+            .map_err(|_| anyhow::anyhow!("decrypt failed — wrong key or corrupted file: {path}"))?;
+
+        let pubkey = ekp.pubkey.clone();
+        self.wallets.write().await.insert(pubkey.clone(), ekp);
+        Ok(pubkey)
     }
 }
