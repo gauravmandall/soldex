@@ -6928,6 +6928,7 @@ dependencies = [
  "aes-gcm",
  "anchor-client",
  "anchor-lang",
+ "anchor-spl",
  "anyhow",
  "axum",
  "base64 0.21.7",

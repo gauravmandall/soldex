@@ -1,8 +1,8 @@
 use crate::errors::SoldexError;
+use crate::price::get_mark_price;
 use crate::state::MAX_OI_PER_SIDE;
 use crate::state::{Position, PositionSide};
 use crate::{OpenPosition, OpenPositionParams};
-use crate::price::get_mark_price;
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<OpenPosition>, params: OpenPositionParams) -> Result<()> {
@@ -22,11 +22,9 @@ pub fn handler(ctx: Context<OpenPosition>, params: OpenPositionParams) -> Result
 
     let mark_price = get_mark_price(&ctx.accounts.price_feed)?;
 
-    let notional = params
-        .size
+    let notional = (params.size / 1_000_000)
         .checked_mul(mark_price)
-        .ok_or(SoldexError::Overflow)?
-        / 1_000_000;
+        .ok_or(SoldexError::Overflow)?;
     let required_margin = notional
         .checked_mul(market.initial_margin_bps as u64)
         .ok_or(SoldexError::Overflow)?
@@ -59,7 +57,6 @@ pub fn handler(ctx: Context<OpenPosition>, params: OpenPositionParams) -> Result
         .collateral
         .checked_sub(params.collateral)
         .ok_or(SoldexError::InsufficientCollateral)?;
-
 
     let clock = Clock::get()?;
     position.set_inner(Position {

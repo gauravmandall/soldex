@@ -4,12 +4,12 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-soldex_perps = "7bWbam1aYjH42WLWJWWRM84Y2WXoknUwjbb6ZpATTM6k"
+soldex_perps = "F8NaJJsJfScnUtz5mHvLfteU6i27n9zrS2dVWxaGvPHR"
 
 [programs.devnet]
-soldex_perps = "7bWbam1aYjH42WLWJWWRM84Y2WXoknUwjbb6ZpATTM6k"
-
+soldex_perps = "F8NaJJsJfScnUtz5mHvLfteU6i27n9zrS2dVWxaGvPHR"
 [registry]
+
 url = "https://api.apr.dev"
 
 [provider]

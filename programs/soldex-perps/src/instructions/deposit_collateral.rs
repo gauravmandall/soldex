@@ -3,11 +3,9 @@ use anchor_spl::token::{self, Transfer};
 use crate::ctx_accounts::DepositCollateral;
 use crate::errors::SoldexError;
 
-pub fn handler(ctx: Context<DepositCollateral>, amount: u64) -> Result<()> {
-    // ── Guard ─────────────────────────────────────────────────────────────────
+pub fn handler(ctx: Context<DepositCollateral>, market_id: [u8; 16], amount: u64) -> Result<()> {
     require!(amount > 0, SoldexError::InsufficientCollateral);
 
-    // ── CPI: transfer USDC from user → vault ──────────────────────────────────
     token::transfer(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
@@ -20,17 +18,13 @@ pub fn handler(ctx: Context<DepositCollateral>, amount: u64) -> Result<()> {
         amount,
     )?;
 
-    let margin = &mut ctx.accounts.margin;
-
-    // ── Init margin account fields on first deposit ───────────────────────────
-    // init_if_needed zeroes the account — default Pubkey is all zeros
+    let margin: &mut Account<'_, crate::state::MarginAccount> = &mut ctx.accounts.margin;
     if margin.owner == Pubkey::default() {
         margin.owner     = ctx.accounts.owner.key();
-        margin.market_id = ctx.accounts.market.market_id;
+        margin.market_id = market_id;  // use arg, not market account
         margin.bump      = ctx.bumps.margin;
     }
 
-    // ── Credit collateral ─────────────────────────────────────────────────────
     margin.collateral = margin.collateral
         .checked_add(amount)
         .ok_or(SoldexError::Overflow)?;

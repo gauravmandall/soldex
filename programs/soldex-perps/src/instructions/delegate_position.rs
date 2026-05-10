@@ -51,9 +51,7 @@ pub fn delegate_position_handler(
         delegated_at,
     });
 
-    // ── Create permission: only when permission_program is the real ACL ──
-    // On devnet base layer (ER tests), permission_program = SystemProgram → skip.
-    // On PER TEE, permission_program = ACLseoPoyC3... → run and set flags.
+    // skip permission CPI if permission_program is SystemProgram (ER tests)
     let is_per = ctx.accounts.permission_program.key() != anchor_lang::system_program::ID;
 
     if is_per {
@@ -73,9 +71,7 @@ pub fn delegate_position_handler(
             &bump_arr,
         ]];
 
-        // User wallet  → AUTHORITY_FLAG | TX_BALANCES_FLAG
-        // Engine key   → AUTHORITY_FLAG only
-        // Everyone else → locked out
+        // user: full access, engine: authority only
         let members = vec![
             Member {
                 pubkey: ctx.accounts.owner.key(),
@@ -105,8 +101,7 @@ pub fn delegate_position_handler(
         .map_err(|_| error!(SoldexError::InvalidSeeds))?;
     }
 
-    // ── Delegate to TEE (PER) or public ER ───────────────────────────
-    // DELeGG takes ownership here — must be last CPI
+    // delegate to TEE ER — must be last CPI
     let nonce_arr = [nonce];
     let seeds: &[&[u8]] = &[
         POSITION_SEED,
