@@ -36,3 +36,5 @@ engine/keeper.json
 # Anchor/Solana
 test-ledger/
 .anchor/
+keeper.enc
+engine/keeper.enc

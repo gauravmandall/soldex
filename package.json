@@ -14,7 +14,7 @@
     "anchor:test:devnet": "ANCHOR_PROVIDER_URL=$HELIUS_RPC ANCHOR_WALLET=~/.config/solana/id.json anchor test --skip-build --skip-deploy --provider.cluster devnet"
   },
   "devDependencies": {
-    "@coral-xyz/anchor": "^0.32.0",
+    "@coral-xyz/anchor": "^0.32.1",
     "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.95.3",
     "@types/chai": "^5.2.3",
@@ -22,12 +22,18 @@
     "@types/node": "^22.0.0",
     "chai": "^6.2.2",
     "ts-mocha": "^11.1.0",
+    "ts-node": "^10.9.2",
     "turbo": "^2.0.0",
-    "typescript": "^5.5.4"
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=20",
     "pnpm": ">=9"
   },
-  "packageManager": "pnpm@9.0.0"
+  "packageManager": "pnpm@9.0.0",
+  "dependencies": {
+    "@magicblock-labs/ephemeral-rollups-sdk": "^0.13.0",
+    "@noble/ed25519": "^1.7.3",
+    "@noble/hashes": "^2.2.0"
+  }
 }
