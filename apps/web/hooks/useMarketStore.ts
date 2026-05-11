@@ -140,32 +140,35 @@ export interface PendingOrderParams {
 }
 
 // ─── Store ────────────────────────────────────────────────────────────────────
-
 interface MarketStore {
-  activeMarket: string;
-  orderbook: OrderbookSnapshot | null;
-  ticker: MarketTicker | null;
-  tickers: Record<string, MarketTicker>;
-  recentTrades: Trade[];
-  positions: Position[];
-  openOrders: OpenOrder[];
-  polyOpportunities: PolyOpportunity[];
-  selectedPolyMarketId: string | null;
-  jupiterOpportunities: JupiterOpportunity[];
-  selectedJupiterMarketId: string | null;
-  polyOrderbooks: Record<string, PolyOrderbook>;
-  polyTrades: Record<string, PolyTrade[]>;
-  polyMarketHistory: { time: number; price: number }[];
-  pendingTxs: PendingTx[];
-  pendingOrderParams: PendingOrderParams | null;
-  setActiveMarket: (id: string) => void;
-  setSelectedPolyMarket: (id: string | null) => void;
-  setSelectedJupiterMarket: (id: string | null) => void;
-  setPendingOrderParams: (p: PendingOrderParams | null) => void;
-  handleEngineMessage: (msg: unknown) => void;
-  addPosition: (p: Position) => void;
-  removePosition: (marketId: string) => void;
+  activeMarket: string
+  orderbook: OrderbookSnapshot | null
+  ticker: MarketTicker | null
+  tickers: Record<string, MarketTicker>
+  recentTrades: Trade[]
+  positions: Position[]
+  openOrders: OpenOrder[]
+  polyOpportunities: PolyOpportunity[]
+  selectedPolyMarketId: string | null
+  jupiterOpportunities: JupiterOpportunity[]
+  selectedJupiterMarketId: string | null
+  polyOrderbooks: Record<string, PolyOrderbook> // key: asset_id or market_id
+  polyTrades: Record<string, PolyTrade[]>
+  polyMarketHistory: { time: number; price: number }[]
+
+  pendingTxs: PendingTx[]
+  pendingOrderParams: PendingOrderParams | null
+
+  setActiveMarket: (id: string) => void
+  setSelectedPolyMarket: (id: string | null) => void
+  setSelectedJupiterMarket: (id: string | null) => void
+  setPendingOrderParams: (p: PendingOrderParams | null) => void
+
+  handleEngineMessage: (msg: unknown) => void
+  addPosition: (p: Position) => void
+  removePosition: (marketId: string) => void
 }
+
 
 export const useMarketStore = create<MarketStore>()(
   immer((set) => ({
