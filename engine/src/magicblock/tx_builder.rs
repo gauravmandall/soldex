@@ -7,24 +7,23 @@ use std::sync::Arc;
 use anchor_lang::{InstructionData, ToAccountMetas};
 use anyhow::Result;
 use solana_sdk::{
-    hash::Hash,
-    instruction::Instruction,
-    message::Message,
-    pubkey::Pubkey,
-    signature::Keypair,
-    transaction::Transaction,
+    hash::Hash, instruction::Instruction, message::Message, pubkey::Pubkey, signature::Keypair,
+    signer::Signer, transaction::Transaction,
 };
 
 use crate::config::EngineConfig;
 
-
 // Fixed MagicBlock program IDs — same on devnet and mainnet
 fn magicblock_program_id() -> Pubkey {
-    "Magic11111111111111111111111111111111111111".parse().expect("static")
+    "Magic11111111111111111111111111111111111111"
+        .parse()
+        .expect("static")
 }
 
 fn delegation_program_id() -> Pubkey {
-    "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh".parse().expect("static")
+    "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
+        .parse()
+        .expect("static")
 }
 
 // Global PDAs — computed once at startup, reused on every tx
@@ -34,16 +33,14 @@ pub struct CachedAccounts {
 
 pub struct ErTxBuilder {
     program_id: Pubkey,
-    keeper: Arc<Keypair>,  // signs keeper txs (update_er, liquidate_er, funding_er)
+    keeper: Arc<Keypair>, // signs keeper txs (update_er, liquidate_er, funding_er)
     cache: CachedAccounts,
 }
 
 impl ErTxBuilder {
     pub fn new(config: &EngineConfig, keeper: Arc<Keypair>) -> Self {
-        let (magic_context, _) = Pubkey::find_program_address(
-            &[b"magic_context"],
-            &magicblock_program_id(),
-        );
+        let (magic_context, _) =
+            Pubkey::find_program_address(&[b"magic_context"], &magicblock_program_id());
         Self {
             program_id: config.program_id.parse().expect("invalid program_id"),
             keeper,
@@ -57,7 +54,8 @@ impl ErTxBuilder {
         Pubkey::find_program_address(
             &[b"position", market_id.as_ref(), owner.as_ref(), &[nonce]],
             &self.program_id,
-        ).0
+        )
+        .0
     }
 
     // ── BASE LAYER ────────────────────────────────────────────────────────────
@@ -73,11 +71,9 @@ impl ErTxBuilder {
         nonce: u8,
         recent_blockhash: Hash,
     ) -> Result<Transaction> {
-        // PDAs injected by #[delegate] macro — must match ctx_accounts.rs
-        let (buffer, _) = Pubkey::find_program_address(
-            &[b"delegate-buffer", position_pda.as_ref()],
-            &self.program_id,
-        );
+        // PDAs derived manually — must match seeds in ctx_accounts.rs
+        let (buffer, _) =
+            Pubkey::find_program_address(&[b"buffer", position_pda.as_ref()], &self.program_id);
         let (delegation_record, _) = Pubkey::find_program_address(
             &[b"delegation", position_pda.as_ref()],
             &delegation_program_id(),
@@ -88,24 +84,31 @@ impl ErTxBuilder {
         );
 
         let accounts = soldex_perps::accounts::DelegatePosition {
-            position:                     *position_pda,
-            owner:                        *owner,
-            buffer_position:              buffer,
-            delegation_record_position:   delegation_record,
+            position: *position_pda,
+            owner: *owner,
+            buffer_position: buffer,
+            delegation_record_position: delegation_record,
             delegation_metadata_position: delegation_metadata,
-            owner_program:                self.program_id,
-            delegation_program:           delegation_program_id(),
-            system_program:               solana_sdk::system_program::id(),
+            owner_program: self.program_id,
+            delegation_program: delegation_program_id(),
+            system_program: solana_sdk::system_program::id(),
+            permission_program: solana_sdk::system_program::id(), // SystemProgram = ER mode
+            permission: solana_sdk::system_program::id(),         // dummy for ER mode
         };
 
-        let data = soldex_perps::instruction::DelegatePosition { market_id, nonce };
+        let data = soldex_perps::instruction::DelegatePosition {
+            market_id,
+            nonce,
+            engine_pubkey: self.keeper.pubkey(),
+        };
 
         let ix = Instruction {
             program_id: self.program_id,
-            accounts:   accounts.to_account_metas(None),
-            data:       data.data(),
+            accounts: accounts.to_account_metas(None),
+            data: data.data(),
         };
 
+        // Owner is fee payer and must sign client-side — return unsigned
         let msg = Message::new(&[ix], Some(owner));
         let mut tx = Transaction::new_unsigned(msg);
         tx.message.recent_blockhash = recent_blockhash;
@@ -123,8 +126,8 @@ impl ErTxBuilder {
         recent_blockhash: Hash,
     ) -> Result<Transaction> {
         let accounts = soldex_perps::accounts::UndelegatePosition {
-            position:      *position_pda,
-            owner:         *owner,
+            position: *position_pda,
+            owner: *owner,
             magic_context: self.cache.magic_context,
             magic_program: magicblock_program_id(),
         };
@@ -133,8 +136,8 @@ impl ErTxBuilder {
 
         let ix = Instruction {
             program_id: self.program_id,
-            accounts:   accounts.to_account_metas(None),
-            data:       data.data(),
+            accounts: accounts.to_account_metas(None),
+            data: data.data(),
         };
 
         let msg = Message::new(&[ix], Some(owner));
@@ -143,18 +146,187 @@ impl ErTxBuilder {
         Ok(tx)
     }
 
-    // ── ER LAYER ──────────────────────────────────────────────────────────────
-    // Send these to MagicBlock ER RPC. These run at ~10ms.
+    // ER layer — keeper-signed, ~10ms. Engine only, never user-facing.
 
-    // Keeper-signed tx. Send to ER RPC. Runs at 10ms.
-    // Called on every price update or trade.
-    // NOTE: real PnL/funding logic pending — currently updates timestamp only.
-    
+    /// Close a delegated position on ER. Keeper signs, mark_price in 1e6 units.
+    /// Send to TEE RPC. PnL calculated on-chain, position wiped after.
+    pub fn close_position_er_tx(
+        &self,
+        position_pda: &Pubkey,
+        market_id: [u8; 16],
+        nonce: u8,
+        mark_price: u64,
+        recent_blockhash: Hash,
+    ) -> Result<Transaction> {
+        // Derive market PDA — same seeds as the program
+        let (market_pda, _) =
+            Pubkey::find_program_address(&[b"market", &market_id], &self.program_id);
 
-    // TODO: uncomment once program instructions are added
-    // pub fn close_position_er_tx(...)  — needs ClosePositionEr in program
-    // pub fn funding_tick_er_tx(...)    — needs FundingTickEr in program
-    // pub fn liquidate_er_tx(...)       — needs LiquidateEr in program
-    // pub fn update_market_er(...)       — needs updatemarket in program
+        let accounts = soldex_perps::accounts::ClosePositionEr {
+            position: *position_pda,
+            owner: self.keeper.pubkey(),
+            market: market_pda,
+        };
+        let data = soldex_perps::instruction::ClosePositionEr {
+            mark_price,
+            market_id,
+            nonce,
+        };
+        let ix = Instruction {
+            program_id: self.program_id,
+            accounts: accounts.to_account_metas(None),
+            data: data.data(),
+        };
+        let mut tx = Transaction::new_with_payer(&[ix], Some(&self.keeper.pubkey()));
+        tx.sign(&[self.keeper.as_ref()], recent_blockhash);
+        Ok(tx)
+    }
 
+    /// Liquidate undercollateralised position on ER. Keeper signs. Send to TEE RPC.
+    pub fn liquidate_er_tx(
+        &self,
+        position_pda: &Pubkey,
+        market_pda: &Pubkey,
+        owner: &Pubkey,
+        market_id: [u8; 16],
+        nonce: u8,
+        mark_price: u64,
+        recent_blockhash: Hash,
+    ) -> Result<Transaction> {
+        let accounts = soldex_perps::accounts::LiquidateEr {
+            liquidator: self.keeper.pubkey(),
+            position: *position_pda,
+            owner: *owner,
+            market: *market_pda,
+        };
+
+        let data = soldex_perps::instruction::LiquidateEr {
+            mark_price,
+            market_id,
+            nonce,
+        };
+
+        let ix = Instruction {
+            program_id: self.program_id,
+            accounts: accounts.to_account_metas(None),
+            data: data.data(),
+        };
+
+        let mut tx = Transaction::new_with_payer(&[ix], Some(&self.keeper.pubkey()));
+        tx.sign(&[self.keeper.as_ref()], recent_blockhash);
+        Ok(tx)
+    }
+
+    /// Liquidate position on base layer. Keeper signs. Send to base RPC.
+    pub fn liquidate_tx(
+        &self,
+        position_pda: &Pubkey,
+        market_pda: &Pubkey,
+        margin_pda: &Pubkey,
+        price_feed: &Pubkey,
+        recent_blockhash: Hash,
+    ) -> Result<Transaction> {
+        let accounts = soldex_perps::accounts::Liquidate {
+            liquidator: self.keeper.pubkey(),
+            market: *market_pda,
+            margin: *margin_pda,
+            position: *position_pda,
+            price_feed: *price_feed,
+        };
+
+        let data = soldex_perps::instruction::Liquidate {};
+
+        let ix = Instruction {
+            program_id: self.program_id,
+            accounts: accounts.to_account_metas(None),
+            data: data.data(),
+        };
+
+        let mut tx = Transaction::new_with_payer(&[ix], Some(&self.keeper.pubkey()));
+        tx.sign(&[self.keeper.as_ref()], recent_blockhash);
+        Ok(tx)
+    }
+
+    /// Tick funding index on ER. Keeper signs. mark_price in 1e6 units. Send to TEE RPC.
+    pub fn funding_tick_er_tx(
+        &self,
+        market_pda: &Pubkey,
+        mark_price: u64,
+        recent_blockhash: Hash,
+    ) -> Result<Transaction> {
+        let accounts = soldex_perps::accounts::FundingTickEr {
+            keeper: self.keeper.pubkey(),
+            market: *market_pda,
+        };
+
+        let data = soldex_perps::instruction::FundingTickEr { mark_price };
+
+        let ix = Instruction {
+            program_id: self.program_id,
+            accounts: accounts.to_account_metas(None),
+            data: data.data(),
+        };
+
+        let mut tx = Transaction::new_with_payer(&[ix], Some(&self.keeper.pubkey()));
+        tx.sign(&[self.keeper.as_ref()], recent_blockhash);
+        Ok(tx)
+    }
+
+    /// Delegate market to ER. Call once at startup. Send to base RPC.
+    pub fn delegate_market_tx(
+        &self,
+        market_pda: &Pubkey,
+        market_id: [u8; 16],
+        recent_blockhash: Hash,
+    ) -> Result<Transaction> {
+        let (buffer_market, _) =
+            Pubkey::find_program_address(&[b"buffer", market_pda.as_ref()], &self.program_id);
+        let (delegation_record_market, _) = Pubkey::find_program_address(
+            &[b"delegation", market_pda.as_ref()],
+            &delegation_program_id(),
+        );
+        let (delegation_metadata_market, _) = Pubkey::find_program_address(
+            &[b"delegation-metadata", market_pda.as_ref()],
+            &delegation_program_id(),
+        );
+
+        let accounts = soldex_perps::accounts::DelegateMarket {
+            market: *market_pda,
+            admin: self.keeper.pubkey(),
+            buffer_market,
+            delegation_record_market,
+            delegation_metadata_market,
+            owner_program: self.program_id,
+            delegation_program: delegation_program_id(),
+            system_program: solana_sdk::system_program::id(),
+        };
+
+        let data = soldex_perps::instruction::DelegateMarket { market_id };
+
+        let ix = Instruction {
+            program_id: self.program_id,
+            accounts: accounts.to_account_metas(None),
+            data: data.data(),
+        };
+
+        let mut tx = Transaction::new_with_payer(&[ix], Some(&self.keeper.pubkey()));
+        tx.sign(&[self.keeper.as_ref()], recent_blockhash);
+        Ok(tx)
+    }
+
+    // ── PDA helpers ───────────────────────────────────────────────────────────
+
+    /// Derive market state PDA — seeds: [b"market", market_id]
+    pub fn derive_market_pda(&self, market_id: &[u8; 16]) -> Pubkey {
+        Pubkey::find_program_address(&[b"market", market_id.as_ref()], &self.program_id).0
+    }
+
+    /// Derive margin account PDA — seeds: [b"margin", market_id, owner]
+    pub fn derive_margin_pda(&self, market_id: &[u8; 16], owner: &Pubkey) -> Pubkey {
+        Pubkey::find_program_address(
+            &[b"margin", market_id.as_ref(), owner.as_ref()],
+            &self.program_id,
+        )
+        .0
+    }
 }

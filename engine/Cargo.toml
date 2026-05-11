@@ -14,6 +14,7 @@ path = "src/main.rs"
 tokio = { version = "1.32", features = ["full"] }
 tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
 solana-pubsub-client = "2.2.1"
+anchor-spl = "0.32.1"
 
 # Solana SDK — bumped to match soldex-perps (anchor 0.32.1 requires solana 2.x)
 solana-client = "=2.2.1"

@@ -51,11 +51,13 @@ pub enum SoldexError {
     #[msg("PDA seeds do not match — invalid account derivation")]
     InvalidSeeds,
 
-        // ── Added for MagicBlock undelegation ─────────────────────────────────────
+    // ── Added for MagicBlock undelegation ─────────────────────────────────────
     #[msg("Position is not delegated to the ephemeral rollup")]
     NotDelegated,
 
     #[msg("Position still has open size — close before undelegating")]
     PositionNotFlat,
 
+    #[msg("Token mint does not match market quote mint")]
+    InvalidMint,
 }

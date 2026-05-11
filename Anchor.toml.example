@@ -4,12 +4,12 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-soldex_perps = "F8NaJJsJfScnUtz5mHvLfteU6i27n9zrS2dVWxaGvPHR"
+soldex_perps = "7bWbam1aYjH42WLWJWWRM84Y2WXoknUwjbb6ZpATTM6k"
 
 [programs.devnet]
-soldex_perps = "F8NaJJsJfScnUtz5mHvLfteU6i27n9zrS2dVWxaGvPHR"
-[registry]
+soldex_perps = "7bWbam1aYjH42WLWJWWRM84Y2WXoknUwjbb6ZpATTM6k"
 
+[registry]
 url = "https://api.apr.dev"
 
 [provider]
@@ -26,7 +26,7 @@ members = ["programs/soldex-perps"]
 startup_wait = 10000
 
 [test.validator]
-url = "https://api.devnet.solana.com"
+url = "https://devnet.helius-rpc.com/?api-key=YOUR_HELIUS_KEY_HERE"
 
 [[test.validator.clone]]
 address = "7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE"

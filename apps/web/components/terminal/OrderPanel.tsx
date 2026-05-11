@@ -12,7 +12,7 @@ type Side = 'long' | 'short'
 interface Props { marketId: string }
 
 export function OrderPanel({ marketId }: Props) {
-  const { ticker } = useMarketStore()
+  const { ticker, setPendingOrderParams } = useMarketStore()
   const { wallet, balance } = useSelfCustodyWallet()
   const { sendMessage } = useEngineWS()
 
@@ -44,8 +44,8 @@ export function OrderPanel({ marketId }: Props) {
 
     setLoading(true)
     try {
-      sendMessage({
-        type: 'build_perps_order',
+      // stash params → PendingTxModal sends build_perps_order after deposit confirms
+      setPendingOrderParams({
         market_id: marketId,
         side,
         size: parseFloat(size),
@@ -53,13 +53,22 @@ export function OrderPanel({ marketId }: Props) {
         collateral_usdc: collateralUsd,
         owner_pubkey: wallet.pubkey,
       })
-      toast.success(`${side.toUpperCase()} order submitted`)
+
+      // Step 1: deposit collateral — engine returns unsigned_tx (submitTo: "deposit")
+      sendMessage({
+        type: 'deposit_collateral',
+        market_id: marketId,
+        amount_usdc: collateralUsd,
+        owner_pubkey: wallet.pubkey,
+      })
+
+      toast.success('Deposit transaction building…')
     } catch (e) {
       toast.error('Order failed')
     } finally {
       setLoading(false)
     }
-  }, [wallet, size, side, leverage, collateralUsd, marketId, sendMessage])
+  }, [wallet, size, side, leverage, collateralUsd, marketId, sendMessage, setPendingOrderParams])
 
   const LEVERAGES = [2, 5, 10, 20]
 
@@ -88,16 +97,16 @@ export function OrderPanel({ marketId }: Props) {
         <div className="grid grid-cols-2 gap-2">
           <button onClick={() => setSide('long')}
             className={`py-2.5 rounded-md font-bold text-xs transition-all ${
-              side === 'long' 
-                ? 'bg-[#064e3b] text-[#34d399] border border-[#10b981]/30 shadow-[0_0_12px_rgba(16,185,129,0.1)]' 
+              side === 'long'
+                ? 'bg-[#064e3b] text-[#34d399] border border-[#10b981]/30 shadow-[0_0_12px_rgba(16,185,129,0.1)]'
                 : 'bg-[#111827] text-[#64748b] border border-[#1e2634] hover:text-[#8b90a8]'
             }`}>
             Long / Buy
           </button>
           <button onClick={() => setSide('short')}
             className={`py-2.5 rounded-md font-bold text-xs transition-all ${
-              side === 'short' 
-                ? 'bg-[#4c0519] text-[#fb7185] border border-[#f43f5e]/30 shadow-[0_0_12px_rgba(244,63,94,0.1)]' 
+              side === 'short'
+                ? 'bg-[#4c0519] text-[#fb7185] border border-[#f43f5e]/30 shadow-[0_0_12px_rgba(244,63,94,0.1)]'
                 : 'bg-[#111827] text-[#64748b] border border-[#1e2634] hover:text-[#8b90a8]'
             }`}>
             Short / Sell
@@ -211,13 +220,3 @@ function Row({ label, value, vClass = 'text-[#94a3b8]' }: { label: string; value
     </div>
   )
 }
-
-
-// function Row({ label, value, vClass = 'text-[#e2e4ef]' }: { label: string; value: string; vClass?: string }) {
-//   return (
-//     <div className="flex justify-between">
-//       <span className="text-[#4b5068]">{label}</span>
-//       <span className={`num ${vClass}`}>{value}</span>
-//     </div>
-//   )
-// }

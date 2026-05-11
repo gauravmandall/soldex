@@ -31,7 +31,7 @@ pub fn handler(ctx: Context<InitializeMarket>, params: InitializeMarketParams) -
     market.is_active = true;
     market.bump = ctx.bumps.market;
     market.vault_bump = ctx.bumps.vault;
-    market._reserved = [0u8; 64];
+    market._reserved = [0u8; 56];
 
     Ok(())
 }

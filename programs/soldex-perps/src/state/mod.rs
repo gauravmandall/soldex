@@ -2,6 +2,8 @@ use anchor_lang::prelude::*;
 
 pub const POSITION_SEED: &[u8] = b"position";
 pub const FUNDING_INTERVAL_SECS: i64 = 8 * 3600;
+/// Max open interest per side (scaled in lots) — prevents u64 overflow
+pub const MAX_OI_PER_SIDE: u64 = 1_000_000_000_000; // 1 trillion lots
 
 // ─── Market State ─────────────────────────────────────────────────────────────
 
@@ -47,41 +49,42 @@ pub struct MarketState {
     pub is_active: bool,
     /// PDA bump
     pub bump: u8,
-    ///
+    /// Vault PDA bump seed
     pub vault_bump: u8,
+    /// Accumulated protocol fees (scaled 1e6 USDC)
+    pub fees_collected: u64,
     /// Reserved for future use
-    pub _reserved: [u8; 64],
+    pub _reserved: [u8; 56],
 }
-
 
 impl Default for MarketState {
     fn default() -> Self {
         Self {
-            market_id:                [0u8; 16],
-            admin:                    Pubkey::default(),
-            quote_mint:               Pubkey::default(),
-            vault:                    Pubkey::default(),
-            price_feed:               Pubkey::default(),
-            tick_size_bps:            0,
-            lot_size:                 0,
-            max_leverage_bps:         0,
-            maker_fee_bps:            0,
-            taker_fee_bps:            0,
-            initial_margin_bps:       0,
-            maintenance_margin_bps:   0,
-            long_open_interest:       0,
-            short_open_interest:      0,
-            cumulative_funding_long:  0,
+            market_id: [0u8; 16],
+            admin: Pubkey::default(),
+            quote_mint: Pubkey::default(),
+            vault: Pubkey::default(),
+            price_feed: Pubkey::default(),
+            tick_size_bps: 0,
+            lot_size: 0,
+            max_leverage_bps: 0,
+            maker_fee_bps: 0,
+            taker_fee_bps: 0,
+            initial_margin_bps: 0,
+            maintenance_margin_bps: 0,
+            long_open_interest: 0,
+            short_open_interest: 0,
+            cumulative_funding_long: 0,
             cumulative_funding_short: 0,
-            last_funding_ts:          0,
-            is_active:                false,
-            bump:                     0,
-             vault_bump:               0,
-            _reserved:                [0u8; 64],
+            last_funding_ts: 0,
+            is_active: false,
+            bump: 0,
+            vault_bump: 0,
+            fees_collected: 0,
+            _reserved: [0u8; 56],
         }
     }
 }
-
 
 impl MarketState {
     pub const LEN: usize = 8    // discriminator
@@ -105,7 +108,8 @@ impl MarketState {
         + 1     // is_active
         + 1     // bump
         + 1     // vault_bump
-        + 64;   // reserved
+        + 8     // fees_collected
+        + 56;   // reserved
 }
 
 // ─── User Margin Account ──────────────────────────────────────────────────────
@@ -152,10 +156,15 @@ pub struct Position {
     pub opened_at: i64,
     /// Is this position open
     pub is_open: bool,
+    /// Whether position is delegated to MagicBlock ephemeral rollup
     pub is_delegated: bool,
+    /// Timestamp when position was delegated
     pub delegated_at: i64,
+    /// Last time position state was updated
     pub last_update_ts: i64,
+    /// PDA bump seed
     pub bump: u8,
+    /// Reserved for future use
     pub _reserved: [u8; 32],
 }
 
@@ -186,9 +195,7 @@ impl Position {
                 // Using basis points arithmetic
                 entry.saturating_sub(entry * (10_000 / lev).saturating_sub(mm) / 10_000)
             }
-            PositionSide::Short => {
-                entry + entry * (10_000 / lev).saturating_sub(mm) / 10_000
-            }
+            PositionSide::Short => entry + entry * (10_000 / lev).saturating_sub(mm) / 10_000,
         }
     }
 }

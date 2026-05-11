@@ -1,7 +1,9 @@
-use anchor_lang::prelude::*;
 use crate::errors::SoldexError;
+use crate::price::get_mark_price;
+use crate::state::MAX_OI_PER_SIDE;
 use crate::state::{Position, PositionSide};
 use crate::{OpenPosition, OpenPositionParams};
+use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<OpenPosition>, params: OpenPositionParams) -> Result<()> {
     let market = &mut ctx.accounts.market;
@@ -13,24 +15,46 @@ pub fn handler(ctx: Context<OpenPosition>, params: OpenPositionParams) -> Result
         SoldexError::LeverageExceeded
     );
     require!(params.size >= market.lot_size, SoldexError::BelowMinLotSize);
-    require!(margin.collateral >= params.collateral, SoldexError::InsufficientCollateral);
+    require!(
+        margin.collateral >= params.collateral,
+        SoldexError::InsufficientCollateral
+    );
 
-    let mark_price: u64 = 150_000_000; // stub — replace with Pyth
+    let mark_price = get_mark_price(&ctx.accounts.price_feed)?;
 
-    let notional = params.size
+    let notional = (params.size / 1_000_000)
         .checked_mul(mark_price)
-        .ok_or(SoldexError::Overflow)? / 1_000_000;
+        .ok_or(SoldexError::Overflow)?;
     let required_margin = notional
         .checked_mul(market.initial_margin_bps as u64)
-        .ok_or(SoldexError::Overflow)? / 10_000;
-    require!(params.collateral >= required_margin, SoldexError::InsufficientCollateral);
+        .ok_or(SoldexError::Overflow)?
+        / 10_000;
+    require!(
+        params.collateral >= required_margin,
+        SoldexError::InsufficientCollateral
+    );
 
     match params.side {
-        PositionSide::Long  => market.long_open_interest  = market.long_open_interest.checked_add(params.size).ok_or(SoldexError::Overflow)?,
-        PositionSide::Short => market.short_open_interest = market.short_open_interest.checked_add(params.size).ok_or(SoldexError::Overflow)?,
+        PositionSide::Long => {
+            let new_oi = market
+                .long_open_interest
+                .checked_add(params.size)
+                .ok_or(SoldexError::Overflow)?;
+            require!(new_oi <= MAX_OI_PER_SIDE, SoldexError::Overflow);
+            market.long_open_interest = new_oi;
+        }
+        PositionSide::Short => {
+            let new_oi = market
+                .short_open_interest
+                .checked_add(params.size)
+                .ok_or(SoldexError::Overflow)?;
+            require!(new_oi <= MAX_OI_PER_SIDE, SoldexError::Overflow);
+            market.short_open_interest = new_oi;
+        }
     }
 
-    margin.collateral = margin.collateral
+    margin.collateral = margin
+        .collateral
         .checked_sub(params.collateral)
         .ok_or(SoldexError::InsufficientCollateral)?;
 
@@ -44,7 +68,7 @@ pub fn handler(ctx: Context<OpenPosition>, params: OpenPositionParams) -> Result
         collateral: params.collateral,
         leverage_bps: params.leverage_bps,
         entry_funding_index: match params.side {
-            PositionSide::Long  => market.cumulative_funding_long,
+            PositionSide::Long => market.cumulative_funding_long,
             PositionSide::Short => market.cumulative_funding_short,
         },
         opened_at: clock.unix_timestamp,

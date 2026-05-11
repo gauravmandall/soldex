@@ -28,10 +28,13 @@ target/
 metsumi.db*
 
 # Build tools
-.anchor/
 .turbo
 
 # Secrets
 engine/keeper.json
 
-
+# Anchor/Solana
+test-ledger/
+.anchor/
+keeper.enc
+engine/keeper.enc
